@@ -1,5 +1,5 @@
 <template>
-  <div>我是功能页面
+  <div>我是二级功能页面
 
   </div>
 </template>

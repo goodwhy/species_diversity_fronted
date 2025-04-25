@@ -1,5 +1,5 @@
 <template>
-  <div>我是二级页面</div>
+  <div>我是二级地图页面</div>
 </template>
 <script setup>
 </script>

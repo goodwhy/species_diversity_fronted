@@ -40,7 +40,7 @@ export default defineConfig([
           singleQuote: true,
           semi: false,
           trailingComma: 'none',
-          printWidth: 80,
+          printWidth: 60,
         },
       ],
       'vue/multi-word-component-names': 'off',
