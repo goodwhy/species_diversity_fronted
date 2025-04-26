@@ -5,11 +5,11 @@
       <el-aside :width="asideWidth" class="aside-container">
         <div class="logo">
           <img
-              src="@/assets/favicon.ico"
+              src="@/assets/146.ico"
               class="logo-icon"
               :style="{width: isCollapse ? '30px' : '24px'}"
           >
-         <span v-show="!isCollapse">GeoC147组</span>
+         <span v-show="!isCollapse">生态管理系统</span>
         </div>
         <el-menu
           router
@@ -20,38 +20,33 @@
           text-color="black"
           active-text-color="#ffff"
         >
-          <el-menu-item index="/map">
+          <el-menu-item index="/layout/map">
             <el-icon><icon-menu /></el-icon>
             <template #title>地图显示</template>
           </el-menu-item>
 
-          <el-sub-menu index="2">
+          <el-sub-menu index="/features">
             <template #title>
               <el-icon><document /></el-icon>
               <span>功能显示</span>
             </template>
 
-            <el-menu-item index="/advanced1">
+            <el-menu-item index="/features/advanced1">
               <el-icon><document /></el-icon>
               高级功能1
             </el-menu-item>
-            <el-menu-item index="/advanced2">
+            <el-menu-item index="/features/advanced2">
               <el-icon><document /></el-icon>
               高级功能2
             </el-menu-item>
           </el-sub-menu>
 
-          <el-menu-item index="/user">
+          <el-menu-item index="/layout/user">
             <el-icon><user /></el-icon>
             <template #title>用户管理</template>
           </el-menu-item>
         </el-menu>
-        <div class="collapse-wrapper">
-        <el-icon class="collapse-icon" @click="toggleCollapse">
-          <Fold v-if="isCollapse" />
-          <Expand v-else />
-        </el-icon>
-        </div>
+
 
 
       </el-aside>
@@ -60,7 +55,28 @@
         <!-- 头部 -->
         <el-header class="header">
           <div class="header-left">
-            <span class="system-title">后台管理系统</span>
+            <el-icon class="header-collapse-icon" @click="toggleCollapse">
+              <Fold v-if="isCollapse" />
+              <Expand v-else />
+            </el-icon>
+            <!-- 面包屑导航 -->
+            <el-breadcrumb separator=">" class="breadcrumb">
+              <el-breadcrumb-item
+                v-for="(item, index) in breadcrumbList"
+                :key="index"
+                :to="index<breadcrumbList.length-1 ? item.path : undefined"
+              >
+              <template #default>
+                <div class="breadcrumb-item">
+                  <el-icon class="breadcrumb-icon">
+                    <component :is="item.meta.icon" /> <!-- 动态图标组件 -->
+                  </el-icon>
+                  <span>{{ item.meta.name || item.meta.title }}</span>
+                </div>
+              </template>
+              </el-breadcrumb-item>
+            </el-breadcrumb>
+
           </div>
           <div class="header-right">
             <el-dropdown>
@@ -96,10 +112,22 @@ import {
   Document,
   User,
   Fold,
-  Expand
+  Expand,
+  ArrowRight,
 } from '@element-plus/icons-vue'
-
+import { useRoute } from 'vue-router'
+const route = useRoute()
 const isCollapse = ref(false)
+// 计算面包屑导航数据
+const breadcrumbList = computed(() => {
+  const matched = route.matched.filter(item => item.meta.title)
+  console.log(route.matched)
+  console.log(route.matched.filter(item => item.meta.title))
+  // 添加首页（可选）
+  return matched
+
+})
+console.log(breadcrumbList.value)
 
 // 侧边栏宽度计算属性
 const asideWidth = computed(() => {
@@ -147,7 +175,7 @@ html, body {
   position: relative;
   border: 1px solid #dcdfe6;
   border-radius: 5px; /* 设置圆角半径 */
-  top: 8px;
+  top: 0px;
   left: 0;
   bottom: 0px;
 
@@ -172,7 +200,7 @@ html, body {
   background-color:#ffff;
   &-icon{
   transition: all 0.3s;
-  min-width:35px ;
+  min-width:60px ;
   }
    /* 折叠状态下调整 */
    .el-aside[width="64px"] & {
@@ -232,17 +260,121 @@ html, body {
   justify-content: space-between;
 
   align-items: center;
-  margin-left: 200px;
+  margin-left: 10px;
   background-color: #ffffff;
   // overflow: hidden;
   border: 1px solid #dcdfe6;
   border-radius: 5px; /* 设置圆角半径 */
 
 }
+.header-left {
+  display: flex;
+  align-items: center;
+  gap:20px;
+
+  .header-collapse-icon {
+    font-size: 20px;
+    cursor: pointer;
+    transition: all 0.3s;
+    color: #666;
+
+    &:hover {
+      color: var(--el-color-primary);
+      transform: scale(1.1);
+    }
+  }
+  .breadcrumb {
+    // 面包屑样式调整
+    :deep(.el-breadcrumb__inner) {
+
+      color: #666;
+
+      &.is-link {
+        color: var(--el-color-primary);
+        font-weight: normal;
+      }
+    }
+    //悬停到面包屑的样式
+    :deep(.el-breadcrumb__item) {
+    .el-breadcrumb__inner {
+      display: inline-flex;
+      align-items: center;
+      padding: 8px 2px;
+      border-radius: 6px;
+      transition: all 0.3s;
+      // 当前页样式
+      &:last-child {
+        .el-breadcrumb__inner {
+          &:hover {
+          background: transparent !important;
+          box-shadow: none;
+          transform: none;
+          cursor:default;
+
+
+          }
+          color: #666 !important;
+          .breadcrumb-icon {
+            color: #999;
+          }
+
+        }
+      }
+
+       // 保持前几项的交互效果
+    &:not(:last-child) {
+      .el-breadcrumb__inner {
+        &:hover {
+          background-color: #f5f7fa;
+          box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+          transform: translateY(-1px);
+        }
+      }
+    }
+
+      // 图标样式
+      .breadcrumb-icon {
+        margin-right: 6px;
+        font-size: 20px;
+        transform: translateY(5px);
+        margin-top: -10px;
+
+      }
+
+      // 链接状态
+      &.is-link {
+        color: var(--el-color-primary);
+        font-weight: normal;
+      }
+
+      // 当前页样式
+      &:last-child {
+        .el-breadcrumb__inner {
+          &:hover {
+          background: transparent !important;
+          box-shadow: none;
+          transform: none;
+          cursor:default;
+
+          color: #666;
+          }
+
+        }
+      }
+      }
+    }
+  }
+  // 分隔符样式
+  :deep(.el-breadcrumb__separator) {
+    margin: 0 4px;
+    color: #999;
+  }
+}
+
+
 
 .system-title {
-  font-size: 20px;
-  font-weight: bold;
+  display: none;
 }
 
 .user-info {
@@ -263,7 +395,7 @@ html, body {
   position: relative;
   top: 10px;
   bottom: 10px;
-  margin-left: 200px;
+  margin-left: 10px;
   height: calc(100vh - 60px) !important;
   overflow: hidden;
   .content-wrapper {
@@ -283,24 +415,4 @@ html, body {
 
 
 }
-/* 新增折叠按钮样式 */
-.collapse-wrapper {
-  position: absolute;
-  bottom: 20px;
-  left: 0;
-  right: 0;
-  display: flex;
-  justify-content: center;
-
-  .collapse-icon {
-    padding: 10px;
-    cursor: pointer;
-    transition: all 0.3s;
-    &:hover {
-      color: var(--el-color-primary);
-      transform: scale(1.1);
-    }
-  }
-}
-
 </style>
