@@ -8,6 +8,9 @@ import vueDevTools from 'vite-plugin-vue-devtools'
 
 // https://vite.dev/config/
 export default defineConfig({
+  optimizeDeps: {
+    exclude: ['@arcgis/core'],
+  },
   plugins: [
     vue(),
     vueDevTools(),

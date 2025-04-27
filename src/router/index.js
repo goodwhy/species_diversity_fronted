@@ -27,6 +27,10 @@ const router = createRouter({
           }
         },
         {
+          name: '3D地图', path: '/layout/scence', component: () => import('../views/Scence3D/Scence3D.vue'),
+
+        },
+        {
           name: '功能显示', path: '/features', component: () => import('../views/features/Features.vue'),
           redirect: '/features/advanced1',
           meta: {

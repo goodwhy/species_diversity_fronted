@@ -2,7 +2,7 @@
   <div class="common-layout">
     <el-container class="layout">
       <!-- 侧边栏 -->
-      <el-aside :width="asideWidth" class="aside-container">
+      <el-aside :width="asideWidth" class="aside-container" v-show="!isFullscreen">
         <div class="logo">
           <img
               src="@/assets/146.ico"
@@ -24,6 +24,21 @@
             <el-icon><icon-menu /></el-icon>
             <template #title>地图显示</template>
           </el-menu-item>
+          <!-- <el-sub-menu index="/">
+            <template #title>
+              <el-icon><icon-menu /></el-icon>
+              <span>地图显示</span>
+            </template>
+
+            <el-menu-item index="/layout/map">
+              <el-icon><Picture /></el-icon>
+              2D地图
+            </el-menu-item>
+            <el-menu-item index="/layout/scence">
+              <el-icon><PictureRounded /></el-icon>
+              3D地图
+            </el-menu-item>
+          </el-sub-menu> -->
 
           <el-sub-menu index="/features">
             <template #title>
@@ -53,11 +68,16 @@
 
       <el-container>
         <!-- 头部 -->
-        <el-header class="header">
+        <el-header class="header" v-show="!isFullscreen">
           <div class="header-left">
             <el-icon class="header-collapse-icon" @click="toggleCollapse">
               <Fold v-if="isCollapse" />
               <Expand v-else />
+            </el-icon>
+             <!-- 新增全屏按钮 -->
+            <el-icon class="fullscreen-icon" @click="toggleFullscreen">
+              <FullScreen v-if="!isFullscreen" />
+               <Aim v-else />
             </el-icon>
             <!-- 面包屑导航 -->
             <el-breadcrumb separator=">" class="breadcrumb">
@@ -96,7 +116,7 @@
 
         <!-- 主要内容 -->
 
-        <el-main class="main-container">
+        <el-main class="main-container" :class="{ 'fullscreen-mode': isFullscreen }">
           <div class="content-wrapper"><router-view></router-view></div>
 
         </el-main>
@@ -106,18 +126,24 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed ,onMounted,onUnmounted} from 'vue'
 import {
   Menu as IconMenu,
   Document,
   User,
   Fold,
   Expand,
+  FullScreen,
+  Aim,
   ArrowRight,
+  Picture,
+  PictureRounded
 } from '@element-plus/icons-vue'
 import { useRoute } from 'vue-router'
+import { ElMessage } from 'element-plus'
 const route = useRoute()
 const isCollapse = ref(false)
+const isFullscreen = ref(false)
 // 计算面包屑导航数据
 const breadcrumbList = computed(() => {
   const matched = route.matched.filter(item => item.meta.title)
@@ -138,6 +164,33 @@ const asideWidth = computed(() => {
 const toggleCollapse = () => {
   isCollapse.value = !isCollapse.value
 }
+// 切换全屏状态
+const toggleFullscreen = () => {
+  isFullscreen.value = !isFullscreen.value
+  ElMessage({
+    message: '按下Esc键退出全屏',
+    plain: true,
+    icon: ArrowRight,
+    showClose: true,
+
+  })
+
+}
+// 监听全屏状态变化
+const handleKeydown = (e) => {
+  if(e.key === 'Escape' && isFullscreen.value) {
+    isFullscreen.value = !isFullscreen.value
+  }
+}
+// 监听全屏状态变化
+onMounted(() => {
+  document.addEventListener('keydown', handleKeydown)
+})
+// 清理事件监听器
+onUnmounted(() => {
+  document.removeEventListener('keydown', handleKeydown)
+})
+
 </script>
 
 <style scoped lang="scss">
@@ -154,6 +207,11 @@ html, body {
   -ms-overflow-style: none;  /* IE and Edge */
   scrollbar-width: none;  /* Firefox */
 }
+// .aside-container,
+// .header {
+//   transition: all 0.3s;
+//   display: v-bind('isFullscreen ? "none" : "block"');
+// }
 .common-layout {
    /* 调整高度保留底部间距 */
    height: 100vh;
@@ -163,12 +221,27 @@ html, body {
   ;
 }
 .layout {
+  // flex-direction: column; /* 改为纵向布局 */
+  // height: 100vh;
   flex: 1;
   height: 100vh;
   overflow: hidden;
   display: flex;
 }
 
+/* 全屏按钮样式 */
+.fullscreen-icon {
+  font-size: 17px;
+  cursor: pointer;
+  transition: all 0.3s;
+  color: #666;
+  margin-left: 2px;
+
+  &:hover {
+    color: var(--el-color-primary);
+    transform: scale(1.1);
+  }
+}
 .aside-container {
   background-color: #ffff;
   transition: width 0.3s;
@@ -185,6 +258,8 @@ html, body {
   overflow: hidden;
 
 }
+/* 动态控制侧边栏和头部显示 */
+
 
 .logo {
   height: 60px;
@@ -334,9 +409,9 @@ html, body {
 
       // 图标样式
       .breadcrumb-icon {
-        margin-right: 6px;
+        margin-right: 5px;
         font-size: 20px;
-        transform: translateY(5px);
+        transform: translateY(4px);
         margin-top: -10px;
 
       }
@@ -396,8 +471,18 @@ html, body {
   top: 10px;
   bottom: 10px;
   margin-left: 10px;
-  height: calc(100vh - 60px) !important;
+  height: calc(100vh - 60px);
   overflow: hidden;
+  transition: all 0.3s;
+  &.fullscreen-mode {
+    height: 100vh;
+    margin-left: 0;
+    margin-top: 0;
+    top: 0;
+    bottom: 0;
+
+    overflow: hidden; /* 隐藏溢出内容 */
+  }
   .content-wrapper {
     height: 100%;
     overflow-y: auto;
@@ -405,7 +490,15 @@ html, body {
     // margin-right: -10px;
     // -ms-overflow-style: none;
     // scrollbar-width: none;
+    // &::-webkit-scrollbar {
+    //   width: 6px;
+    // }
+    // &::-webkit-scrollbar-thumb {
+    //   background: rgba(144,147,153,.3);
+    //   border-radius: 3px;
+    // }
   }
+
   // /* 隐藏主内容区滚动条 */
   // .content-wrapper::-webkit-scrollbar {
   //   display: none;
