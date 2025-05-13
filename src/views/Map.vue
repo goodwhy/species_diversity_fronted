@@ -301,7 +301,7 @@ chartsData.value.forEach((data,index) => {
 
   }
 })
-//更新图标的显示位置
+//更新图表的显示位置
 const updateEcharts = function () {
     chartInstances.forEach((item, index) => {
       const screen = view.toScreen(item.location)
@@ -323,10 +323,37 @@ const updateEcharts = function () {
 }
   //波纹效果相关函数
   function handlePointMove(event) {
-    console.log(event)
+    if (!view||!view.ready) {
+      return
+    }
+    view.hitTest(event).then((response) => {
+      console.log(response.results)
+      const results = response.results
+      let hitTargetGraphic = null
+      const graphicRipple = results.find((result) => {
+        return result.graphic && result.graphic.attributes&&result.graphic.attributes.id==='point2'
+      })
+      if (graphicRipple) {
+        hitTargetGraphic = graphicRipple.graphic
+        console.log(hitTargetGraphic)
+      }
+      if (hitTargetGraphic) {
+        if (activeRippleGraphic !== hitTargetGraphic) {
+          clearRippleEffect()
+          activeRippleGraphic = hitTargetGraphic
+          createRippleEffect(hitTargetGraphic)
+        }
+      } else {
+        if (activeRippleGraphic) {
+          clearRippleEffect()
+          activeRippleGraphic = null
+        }
+      }
+     })
 
   }
   function createRippleEffect(graphic) {
+
     //
   }
   //清除波纹效果
