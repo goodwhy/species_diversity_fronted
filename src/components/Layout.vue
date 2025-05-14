@@ -5,11 +5,11 @@
       <el-aside :width="asideWidth" class="aside-container" v-show="!isFullscreen">
         <div class="logo">
           <img
-              src="@/assets/146.ico"
+              src="@/assets/bird.png"
               class="logo-icon"
               :style="{width: isCollapse ? '30px' : '24px'}"
           >
-         <span v-show="!isCollapse">生态管理系统</span>
+         <span v-show="!isCollapse">栖 境 智 观</span>
         </div>
         <el-menu
           router
@@ -157,7 +157,7 @@ console.log(breadcrumbList.value)
 
 // 侧边栏宽度计算属性
 const asideWidth = computed(() => {
-  return isCollapse.value ? '64px' : '200px'
+  return isCollapse.value ? '64px' : '190px'
 })
 
 // 切换折叠状态
@@ -235,7 +235,7 @@ html, body {
   cursor: pointer;
   transition: all 0.3s;
   color: #666;
-  margin-left: 2px;
+  margin-left: 5px;
 
   &:hover {
     color: var(--el-color-primary);
@@ -249,12 +249,8 @@ html, body {
   border: 1px solid #dcdfe6;
   border-radius: 5px; /* 设置圆角半径 */
   top: 0px;
-  left: 0;
-  bottom: 0px;
-
-
-
-
+  left: 1px;
+  bottom: 1px;
   overflow: hidden;
 
 }
@@ -267,15 +263,15 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap:8px;
-  padding: 0 10px;
+  gap:15px;
+  padding: 5px 5px;
   overflow: hidden;
   transition: all 0.3s;
-  font-size: 18px;
+  font-size: 21px;
   background-color:#ffff;
   &-icon{
   transition: all 0.3s;
-  min-width:60px ;
+  min-width:40px ;
   }
    /* 折叠状态下调整 */
    .el-aside[width="64px"] & {
@@ -285,7 +281,7 @@ html, body {
 }
 
 .el-menu-vertical:not(.el-menu--collapse) {
-  width: 200px;
+  width: 190px;
 }
 
 .el-menu {
@@ -294,27 +290,38 @@ html, body {
 
 /* 新增菜单项悬停效果 */
 :deep(.el-menu-item) {
+  height: 45px;
+  line-height: 45px;
   transition: all 0.3s;
-  margin: 4px 8px;
-  border-radius: 6px !important;
+  margin: 0px 7px;
+  border-radius: 25px !important;
+  .el-icon{
+    margin-right: 14px;
+    font-style: 15px;
+  }
 
   &:hover {
     background-color: #f5f7fa !important;
-    box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+    box-shadow: 0px 2px 12px 0 rgba(0, 0, 0, 0.1);
   }
 
   &.is-active {
     background-color: var(--el-color-primary) !important;
     color: #fff !important;
+    font-weight: 500;
   }
 }
 
 /* 子菜单标题样式 */
 :deep(.el-sub-menu__title) {
+  height: 45px;
+  line-height: 45px;
   transition: all 0.3s;
-  margin: 4px 8px;
-  border-radius: 6px !important;
-
+  margin: 6px 10px;
+  border-radius: 25px !important;
+  .el-icon{
+    margin-right: 12px;
+  }
   &:hover {
     background-color: #f5f7fa !important;
   }
@@ -324,18 +331,36 @@ html, body {
 .el-menu--collapse {
   :deep(.el-menu-item),
   :deep(.el-sub-menu__title) {
-    margin: 4px 0;
+    padding: 0 10px !important;
+    justify-content: center;
+    margin: 6px 0;
+
+    .el-icon{
+      margin-right: 6px;
+      font-size: 20px;
+    }
   }
 }
 
+// 调整菜单整体样式
+.el-menu-vertical {
+  border-right: none;
+  padding: 5px 0;
+
+  &:not(.el-menu--collapse) {
+    margin-left: 4px;
+    width: 185px; // 展开时的宽度
+  }
+}
 /* 原有其他样式保持不变... */
 
 .header {
   display: flex;
   justify-content: space-between;
-
+  height: 45px;
   align-items: center;
-  margin-left: 10px;
+  margin-left: 5px;
+  margin-right: 5px;
   background-color: #ffffff;
   // overflow: hidden;
   border: 1px solid #dcdfe6;
@@ -468,9 +493,10 @@ html, body {
   border: 1px solid #dcdfe6;
   border-radius: 5px; /* 设置圆角半径 */
   position: relative;
-  top: 10px;
+  top: 5px;
   bottom: 10px;
-  margin-left: 10px;
+  margin-left: 5px;
+  margin-right: 5px;
   height: calc(100vh - 60px);
   overflow: hidden;
   transition: all 0.3s;
@@ -509,3 +535,4 @@ html, body {
 
 }
 </style>
+
