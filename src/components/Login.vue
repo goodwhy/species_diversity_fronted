@@ -207,6 +207,9 @@ const submitButton = async () => {
   localStorage.setItem('token', res.data.token)
   console.log(res)
   //使用router.push()跳转到首页
+  // router.push({
+  //   path: '/',
+  // })
 }
 watch(isRegister, () => {
   formModel.value = {

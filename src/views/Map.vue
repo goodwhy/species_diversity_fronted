@@ -6,6 +6,13 @@
     </el-tooltip>
   </div>
   <div id="echarts1" class="echarts-overlay"></div>
+  <!-- <div class="layer-list">
+    <div>
+      <img :src="LayerListIcon"/>
+    </div>
+  </div> -->
+
+
 </template>
 <script setup>
 import { PictureRounded } from '@element-plus/icons-vue'
@@ -148,6 +155,7 @@ onMounted(() => {
   }))
 map.add(graphicslayer)
   view.when(() => {
+    console.log(view.map.layers.items)//打印出地图上的所有图层
     console.log('地图加载完成')
     // let point1 = new Point({
     //   type: 'point',
@@ -327,7 +335,7 @@ const updateEcharts = function () {
       return
     }
     view.hitTest(event).then((response) => {
-      console.log(response.results)
+      // console.log(response.results)
       const results = response.results
       let hitTargetGraphic = null
       const graphicRipple = results.find((result) => {
