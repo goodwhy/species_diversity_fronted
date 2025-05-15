@@ -1,21 +1,38 @@
 <template>
-  <div id="viewDiv">
+  <div id="viewDiv" ref="mapViewNode">
 
     <el-tooltip content="3D" placement="bottom" effect="dark">
     <el-icon class="map-Scenceicon" @click="changeScence"><PictureRounded /></el-icon>
     </el-tooltip>
   </div>
   <div id="echarts1" class="echarts-overlay"></div>
-  <!-- <div class="layer-list">
-    <div>
+  <div class="layer-list">
+    <div class="layer-list-icon" @click="handleLayerListPanelVisible">
       <img :src="LayerListIcon"/>
     </div>
-  </div> -->
+    <div class="layer-list-view" v-show="layerListPanelVisible">
+      <div class="layer-list-herder">
+        <span>图层列表</span>
+      </div>
+      <div class="layer-list-content">
+        <div class="layer-list-item" v-for="(item,index) in layerList" :key="index">
+          <span>{{item.name}}</span>
+          <!--
+           -->
+          <el-icon class="layer-toggle-icon" @click="handleLayerItemClick(item)">
+              <View v-if="alreadyAddLayerIds.includes(item.id)" />
+              <Hide v-else />
+          </el-icon>
+        </div>
+
+      </div>
+    </div>
+  </div>
 
 
 </template>
 <script setup>
-import { PictureRounded } from '@element-plus/icons-vue'
+import { PictureRounded,View,Hide} from '@element-plus/icons-vue'
 import { onMounted ,onUnmounted,ref,shallowRef,markRaw,watch} from 'vue'
 import Map from '@arcgis/core/Map'
 import MapView from '@arcgis/core/views/MapView'
@@ -24,6 +41,9 @@ import Layer from '@arcgis/core/layers/Layer'
 import Point from '@arcgis/core/geometry/Point'
 import Graphic from '@arcgis/core/Graphic'
 import GraphicsLayer from '@arcgis/core/layers/GraphicsLayer'
+import MapImageLayer from '@arcgis/core/layers/MapImageLayer'
+import ImageryLayer from '@arcgis/core/layers/ImageryLayer'
+import FeatureLayer from '@arcgis/core/layers/FeatureLayer'
 import SimpleMarkerSymbol from '@arcgis/core/symbols/SimpleMarkerSymbol'
 import TextSymbol from '@arcgis/core/symbols/TextSymbol'
 // import Geometry from '@arcgis/core/geometry/Geometry'
@@ -35,17 +55,88 @@ import BaseLayerViewGL2d from '@arcgis/core/views/2d/layers/BaseLayerViewGL2D'
 import * as reactiveUtils from '@arcgis/core/core/reactiveUtils'
 // import ExternalRenderer from '@arcgis/core/views/3d/externalRenderer'
 import { useRouter } from 'vue-router'
-// import { id } from 'element-plus/es/locale'
-// import { de } from 'element-plus/es/locale'
+import LayerListIcon from '@/assets/layer.jpg'
+
 esriConfig.apiKey = 'AAPTxy8BH1VEsoebNVZXo8HurMvK7DSS7UETawwAOvI84A1Y1ebCR6Fv-VcdRKlkvBsFPBowsyF6u_VoN3SHsMRRt7B2zSzQQKYNTyo6aWm38gyU5AqWJ1MTnbhnQ-TUh3BzbrbVozQVvc2iurjDVaJymeYQH0nf0qOa0mAk2SLS-0xVVqq3RJU8JZEHNRBgP5TmUB9CyZEZ98PYON3zI-YfpHZcze7qloTWD0ePmQVFl5o.AT1_Oo8znb3N'
 const router = useRouter()
 const changeScence = () => {
   router.push('/layout/scence')
 }
+const mapViewNode=ref(null)
 
 const mapContainerRef = ref(null)
 const mapInstance = shallowRef(null)
 const mapViewIstance = shallowRef(null)
+const handleLayerListPanelVisible = () => {
+  layerListPanelVisible.value = !layerListPanelVisible.value
+}
+
+//图层管理列表使用的变量
+const layerListPanelVisible = ref(false)
+const layerList = [{
+  id: 'layer-1',
+  name: '图层一',
+  url:'https://sampleserver6.arcgisonline.com/arcgis/rest/services/USA_Topo_Map/MapServer',
+  type:'mapImageLayer',
+}, {
+  id: 'layer-2',
+  name: '图层二',
+  url: 'https://sampleserver6.arcgisonline.com/arcgis/rest/services/USA/MapServer/0',
+  type:'featureLayer'
+  }, {
+  id: 'layer-3',
+  name: '图层三',
+  url: 'https://landsat2.arcgis.com/arcgis/rest/services/Landsat8_Views/ImageryServer',
+  type:'ImageryLayer'
+  }]
+let alreadyAddLayerIds = ref([])
+const handleLayerItemClick = (item) => {
+  if(!mapViewIstance.value){
+    return
+  }
+  const view = mapViewIstance.value
+  let ArcGISLayer = null
+  switch (item.type) {
+    case 'mapImageLayer':
+      ArcGISLayer = MapImageLayer
+      break;
+    case 'featureLayer':
+      ArcGISLayer = FeatureLayer
+      break;
+    case 'ImageryLayer':
+      ArcGISLayer = ImageryLayer
+      break;
+    default:
+      break;
+  }
+  let maplayer = view.map.layers.items//获取地图上的所有图层
+  let layerIds = maplayer.map((item) => { item.id })//获取所有图层的id
+  //如果已经添加过图层删掉该图层，并更新layersIds和maplayer如果没有添加过该图层加上该图层
+  if (layerIds.includes(item.id)) {
+    const resultslayer = view.map.findLayerById(item.id)
+    if (resultslayer) {
+      view.map.remove(resultslayer)
+      maplayer = view.map.layers.items
+      layerIds = maplayer.map((item) => { item.id })
+      alreadyAddLayerIds.value = layerIds
+    }
+
+  } else {
+    if (ArcGISLayer) {
+      const Nlayer = new ArcGISLayer({
+        url: item.url,
+        id: item.id
+      })
+      view.map.add(Nlayer)
+      maplayer = view.map.layers.items
+      layerIds = maplayer.map((item) => { item.id })
+      alreadyAddLayerIds.value = layerIds
+    }
+
+  }
+
+}//图层列表点击事件
+
 
 
 // //定义自定义图层图表类 来自于baselayerviewgl2d
@@ -149,6 +240,8 @@ onMounted(() => {
     //   components: ['attribution']
     // }
   })
+  mapViewIstance.value=view
+
 
   let graphicslayer = markRaw(new GraphicsLayer({
     listMode: 'hide',//设置图层列表模式为隐藏
@@ -185,9 +278,9 @@ map.add(graphicslayer)
 
     const svgPath = "M16,3.5c-4.142,0-7.5,3.358-7.5,7.5c0,4.143,7.5,14.5,7.5,14.5s7.5-10.357,7.5-14.5C23.5,6.858,20.142,3.5,16,3.5z M16,14.583c-2.258,0-4.083-1.825-4.083-4.083S13.742,6.417,16,6.417S20.083,8.242,20.083,10.5S18.258,14.583,16,14.583z";
     let text = ref('54')
-    setInterval(() => {
-     console.log(text.value = Math.floor(Math.random() * 100))
-    }, 2000)
+    // setInterval(() => {
+    //  console.log(text.value = Math.floor(Math.random() * 100))
+    // }, 2000)
     console.log(text.value)
     let point2 = markRaw(new Point({
       longitude: 116.3270,
@@ -247,7 +340,11 @@ map.add(graphicslayer)
     console.log("1234")
     console.log("987" + graphicslayer.graphics)//打印图表图层中的所有创建出来的图表
     view.on('pointer-move', handlePointMove)
-    view.on("pointer-move",clearRippleEffect)
+    view.on("pointer-leave", () => {
+      clearRippleEffect()
+      activeRippleGraphic = null
+      // lastHoveredGraphicId = null
+    })
     //监听文本值的变化，如果文本值(text.value)变化找到变化的点重新创建一个文本文本值为新值
     watch(text, (newvalue) => {
       console.log(newvalue)
@@ -276,13 +373,13 @@ map.add(graphicslayer)
   console.error('地图加载失败', error)
 })
 view.on("click", (event) => {
-  console.log(event.x, event.y)//打印出屏幕坐标
+  // console.log(event.x, event.y)//打印出屏幕坐标
   let screenPoint = {
     x: event.x,
     y: event.y
   }
   let point = view.toMap(screenPoint)
-  console.log(point.longitude, point.latitude)//打印出经纬度
+  // console.log(point.longitude, point.latitude)//打印出经纬度
 
 })
 // initializeEcharts()
@@ -313,7 +410,7 @@ chartsData.value.forEach((data,index) => {
 const updateEcharts = function () {
     chartInstances.forEach((item, index) => {
       const screen = view.toScreen(item.location)
-      console.log(item.location)
+      // console.log(item.location)
 
       console.log(screen)
       if (screen) {
@@ -337,11 +434,14 @@ const updateEcharts = function () {
     view.hitTest(event).then((response) => {
       // console.log(response.results)
       const results = response.results
+      // console.log('12345678'+results)
       let hitTargetGraphic = null
       const graphicRipple = results.find((result) => {
         return result.graphic && result.graphic.attributes&&result.graphic.attributes.id==='point2'
       })
       if (graphicRipple) {
+        console.log(graphicRipple)
+        // console.log(mapViewNode.value)
         hitTargetGraphic = graphicRipple.graphic
         console.log(hitTargetGraphic)
       }
@@ -361,11 +461,52 @@ const updateEcharts = function () {
 
   }
   function createRippleEffect(graphic) {
+    if(!graphic||!view||!graphic.geometry) {
+      return
+    }
+    const screenPoint = view.toScreen(graphic.geometry)
+    console.log("099874"+screenPoint)
+    if (!screenPoint) {return }
 
+    const rippleCount = 3
+    const rippleDuration = 1.5
+    const rippleDelayIncrement = 0.3
+    const rippleColor = "rgba(0,150,255,0.7)"
+    for (let i = 0; i < rippleCount; i++) {
+      const ripple = document.createElement('div')
+      ripple.style.position = 'absolute'
+      ripple.style.borderRad = '50%'
+      ripple.style.backgroundColor = rippleColor
+      ripple.style.width = '10px'
+      ripple.style.height = '10px'
+      // ripple.style.transform = 'translate(-50%,50%) scale(0)'
+      ripple.style.opacity = '1'
+      ripple.style.pointerEvents = 'none'
+      ripple.style.zIndex = '0'
+      const symbolSize = parseFloat(graphic.symbol.size)||24
+      const offsetY = symbolSize / 2 + 10
+      ripple.style.left = `${screenPoint.x}px`;
+      ripple.style.top = `${screenPoint.y + offsetY}px`; // 在点的下方
+      //css动画
+      // ripple.style.animation = `ripple-wave ${rippleDuration}s ease-out ${i*rippleDelayIncrement}s infinite`
+      ripple.style.animationName = 'ripple-wave';
+      ripple.style.animationDuration = `${rippleDuration}s`;
+      ripple.style.animationTimingFunction = 'ease-out';
+      ripple.style.animationDelay = `${i * rippleDelayIncrement}s`;
+      ripple.style.animationIterationCount = 'infinite';
+      mapViewNode.value.appendChild(ripple)
+      rippleEffectElements.push(ripple)
+    }
     //
   }
   //清除波纹效果
   function clearRippleEffect() {
+    rippleEffectElements.forEach(rippleEl => {
+      if (rippleEl.parentNode) {
+        rippleEl.parentNode.removeChild(rippleEl)
+      }
+    })
+    rippleEffectElements = []
 
   }
 
@@ -383,6 +524,7 @@ const updateEcharts = function () {
 
 
 onUnmounted(() => {
+  clearRippleEffect()
   if (stationaryHandle) {
     stationaryHandle.remove()
     stationaryHandle=null
@@ -398,6 +540,18 @@ onUnmounted(() => {
 
 
 </script>
+<style>
+@keyframes ripple-wave {
+  0% {
+    transform: translate(-50%, -50%) scale(0.1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(3); /* 波纹扩散到的最大尺寸 */
+    opacity: 0;
+  }
+}
+</style>
 <style scoped>
 html, body, #viewDiv {
       padding: 0;
@@ -463,6 +617,82 @@ html, body, #viewDiv {
   z-index: 10;
   border:1px solid #ccc;
 }
+
+.layer-list-icon{
+  position:absolute;
+  top:10px;
+  right:16px;
+  width: 36px;
+  height:36px;
+  padding: 2px;
+  background-color: #fff;
+  border:2px solid #fff;
+  box-sizing: border-box;
+  cursor: pointer;
+
+}
+.layer-list-icon:hover{
+  border-color: #409eff;
+}
+.layer-list-icon img{
+  width:100%;
+  height:100%;
+}
+.layer-list-view{
+  position:absolute;
+  top:10px;
+  right:60px;
+  width:260px;
+  height:400px;
+  padding: 0 16px;
+  background-color:rgba(255, 255, 255, 0.9);
+  border:2px solid #fff;
+  box-sizing: border-box;
+}
+.layer-list-herder{
+  height: 48px;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid #eee;
+  box-sizing: border-box;
+}
+.layer-list-herder span{
+  font-size: 16px;
+  font-weight: 600;
+}
+.layer-list-content{
+  height:calc(100%-48px);
+  padding-top:8px;
+}
+.layer-list-item{
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-right: 8px;
+  box-sizing: border-box;
+}
+.layer-toggle-icon { /* Style for the new Element Plus icon */
+  font-size: 18px; /* Default icon size */
+  cursor: pointer;
+  color: #606266; /* Default icon color */
+  transition: font-size 0.2s, color 0.2s;
+}
+/* .layer-list>img{
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+} */
+.layer-list-item:hover{
+  background-color: #f5f5f5;
+  padding-left: 8px;
+  font-weight:600;
+}
+.layer-list-item:hover .layer-toggle-icon{
+  font-size: 22px;
+  color: #409eff;
+}
+
 /* 消除地图点击时显示蓝色边框 */
 .esri-view{
     /* --esri-view-outline-color: var(--calcite-color-brand); */
