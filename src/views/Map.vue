@@ -1,5 +1,7 @@
 <template>
+
   <div id="viewDiv" ref="mapViewNode">
+
 
     <el-tooltip content="3D" placement="bottom" effect="dark">
     <el-icon class="map-Scenceicon" @click="changeScence"><PictureRounded /></el-icon>
@@ -30,10 +32,12 @@
   </div>
 
 
+
 </template>
 <script setup>
 import { PictureRounded,View,Hide} from '@element-plus/icons-vue'
-import { onMounted ,onUnmounted,ref,shallowRef,markRaw,watch} from 'vue'
+import { onMounted, onUnmounted, ref, shallowRef, markRaw, watch ,computed} from 'vue'
+import EchartsOverlay from './echarts/EchartsOverlay.vue'
 import Map from '@arcgis/core/Map'
 import MapView from '@arcgis/core/views/MapView'
 import esriConfig from "@arcgis/core/config.js"
@@ -55,10 +59,12 @@ import BaseLayerViewGL2d from '@arcgis/core/views/2d/layers/BaseLayerViewGL2D'
 import * as reactiveUtils from '@arcgis/core/core/reactiveUtils'
 // import ExternalRenderer from '@arcgis/core/views/3d/externalRenderer'
 import { useRouter } from 'vue-router'
+import { useMapViewDataStore } from '@/stores/mapviewdata'
 import LayerListIcon from '@/assets/layer.jpg'
 
 esriConfig.apiKey = 'AAPTxy8BH1VEsoebNVZXo8HurMvK7DSS7UETawwAOvI84A1Y1ebCR6Fv-VcdRKlkvBsFPBowsyF6u_VoN3SHsMRRt7B2zSzQQKYNTyo6aWm38gyU5AqWJ1MTnbhnQ-TUh3BzbrbVozQVvc2iurjDVaJymeYQH0nf0qOa0mAk2SLS-0xVVqq3RJU8JZEHNRBgP5TmUB9CyZEZ98PYON3zI-YfpHZcze7qloTWD0ePmQVFl5o.AT1_Oo8znb3N'
 const router = useRouter()
+const mapviewDataStore = useMapViewDataStore()
 const changeScence = () => {
   router.push('/layout/scence')
 }
@@ -67,11 +73,156 @@ const mapViewNode=ref(null)
 const mapContainerRef = ref(null)
 const mapInstance = shallowRef(null)
 const mapViewIstance = shallowRef(null)
+// const showAirQualityChartOverlay = ref(true)//控制图表的可见性
+// const airQualityChartOverlayStyle = ref({
+//   position: 'absolute',
+//   bottom: '20px',
+//   left: '0px',
+//   width: '100%',
+//   height: '400px',
+//   backgroundColor: 'rgb(255,255,255,0.9)',
+//   border: '1px solid #ccc',
+//   boxShadow: '0 2px 10px rgb(0,0,0,0.1)',
+//   zIndex:30,
+
+
+// })//设置样式 图表的样式
+// const airQualityChartOption = computed(() => {
+//   if (mapviewDataStore.timestrdata) {
+//     return {
+//       title: {
+//       text: '空气质量检测图',
+//       left:90
+//     },
+//     legend: {
+//       data: ['aqi', 'PM2.5','PM10','NO2','CO','O3','SO2'],
+//       left: 'center',
+//       top: '0',
+//       textStyle: {
+//         color: 'black',//设置图例文字颜色
+//       }
+//     },
+//     tooltip: {
+//       show: true,
+//       trigger: 'axis',//触发类型
+//     },
+//     xAxis: {
+//       type: 'category',
+//       data: mapviewDataStore.timestrdata,
+//       boundaryGap: false,//紧挨边缘
+
+//     },
+//     yAxis: {
+//       type: 'value',
+//       show: true,
+//       scale: true,//设置y轴的刻度脱离0值比例
+//     },
+//     series: [
+//       {
+//         name: 'aqi',
+//         type: 'line',
+//         data: mapviewDataStore.aqidata,
+//         markPoint: {
+//           data: [
+//             { type: 'max', name: '最大值' },
+//             { type: 'min', name: '最小值' }
+//           ]
+//         },
+//         markLine: {
+//           data: [
+//             { type: 'average', name: '平均值' }
+//           ]
+//         },
+//         markArea: {
+//           data: [
+//             [
+//               {xAxis:'1月'},
+//               {xAxis:'3月'}
+//             ],
+//           ]
+//         },
+//         smooth: true,//设置折线图平滑
+//         lineStyle: {
+//           color: 'green',//设置折线的颜色
+//           type: 'solid',//设置折线的类型 dashed(虚线), dotted(点线), solid
+//         },//设置折线的样式
+//         // areaStyle: {
+//         //   color: 'rgba(255, 0, 0, 0.5)'//设置折线下面的颜色
+//         // },
+//         // stack:'alll'
+
+
+//       },
+//       {
+//         name: 'PM2.5',
+//         type: 'line',
+
+//         data: mapviewDataStore.pm25data,
+//         // stack: 'alll',
+//         // areaStyle: {
+//         //   color: 'rgba(0, 0, 255, 0.5)'//设置折线下面的颜色
+//         // },
+//       },//堆叠图，在第一个折线图的基础上加一个折线图
+//       {
+//         name: 'PM10',
+//         type: 'line',
+
+//         data: mapviewDataStore.pm10data,
+//         // stack: 'alll',
+//         // areaStyle: {
+//         //   color: 'rgba(0, 0, 255, 0.5)'//设置折线下面的颜色
+//         // },
+//       },
+//       {
+//         name: 'NO2',
+//         type: 'line',
+
+//         data: mapviewDataStore.no2data,
+//         // stack: 'alll',
+//         // areaStyle: {
+//         //   color: 'rgba(0, 0, 255, 0.5)'//设置折线下面的颜色
+//         // },
+//       },
+//       {
+//         name: 'CO',
+//         type: 'line',
+
+//         data: mapviewDataStore.codata,
+//         // stack: 'alll',
+//         areaStyle: {
+//           color: 'rgba(0, 0, 255, 0.5)'//设置折线下面的颜色
+//         },
+//       },
+//       {
+//         name: 'O3',
+//         type: 'line',
+
+//         data: mapviewDataStore.o3data,
+//         // stack: 'alll',
+//         // areaStyle: {
+//         //   color: 'rgba(0, 0, 255, 0.5)'//设置折线下面的颜色
+//         // },
+//       },
+//       {
+//         name: 'SO2',
+//         type: 'line',
+
+//         data: mapviewDataStore.so2data,
+//         // stack: 'alll',
+//         // areaStyle: {
+//         //   color: 'rgba(0, 0, 255, 0.5)'//设置折线下面的颜色
+//         // },
+//       }
+//     ]
+
+//     }
+//   }
+// })//设置option  折线图的option
+
+//图层管理列表使用的变量
 const handleLayerListPanelVisible = () => {
   layerListPanelVisible.value = !layerListPanelVisible.value
 }
-
-//图层管理列表使用的变量
 const layerListPanelVisible = ref(false)
 const layerList = [{
   id: 'layer-1',
@@ -139,52 +290,11 @@ const handleLayerItemClick = (item) => {
 
 
 
-// //定义自定义图层图表类 来自于baselayerviewgl2d
-// const EchartsLayerView2D = BaseLayerViewGL2d.createSubclass({
-//   declaredClass: 'EchartsLayerView2D',
-//   _echartsInstances: null,
-//   _echartsContainer: null,
-//   _handels: null,//用于管理非reactiveUtils.watch监听器（window resize）
-//   _abortController: null,//用于取消reactiveUtils.watch监听
-//   constructor() {
-//     this._echartsInstances = {}
-//     // this._echartsContainer = null
-//     this._handels = new Handles()
-//     this._abortController = new AbortController()
-//     this._resizeEcharts = this._resizeEcharts.bind(this)
-//     this._updateEcharts = this._updateEcharts.bind(this)
-//   },
-// });
-
-
-// const initializeEcharts = () => {
-//   const chart = echarts.init(document.getElementById('echarts-container'))
-//   echarts.registerMap('beijing', bjs)
-//   const option = {
-//     geo: {
-//       map: 'beijing',
-//       roam: false,
-//       zoom: 1.2,
-//       silent: true,// 禁用事件处理
-//       label: {
-//         show: true,
-//         fontSize: 10
-//       },
-//       itemStyle: {
-//         areaColor: '#f0f0f0',
-//         borderColor: '#000',
-//         borderWidth: 1
-//       }
-//     }
-//   }
-//   chart.setOption(option)
-// }
-
 let rippleEffectElements = []; // 存储当前活动的波纹 DOM 元素
 let activeRippleGraphic = null; // 存储当前哪个 Graphic 正在显示波纹
 let stationaryHandle = null
 
-  const chartsData = ref([
+const chartsData = ref([
   { id: 'echarts1',
     location: markRaw(new Point({longitude: 116.4074, latitude: 39.9042 })),
     option: { /* ... ECharts option ... */
@@ -193,30 +303,105 @@ let stationaryHandle = null
         series: [{ data: [120, 200, 150, 80], type: 'bar' }],
         grid: { left: '15%', right: '10%', top: '25%', bottom: '15%' }
     }
-  // }, {
-  //   id: 'beijing-chart2',
-  //   location: new Point({ longitude: 116.4074, latitude: 39.9042 }),
-  //   option: {
-  //     geo: {
-  //     map: 'beijing',
-  //     roam: true,
-  //     zoom: 1.2,
-  //     label: {
-  //       show: true,
-  //       fontSize: 10
-  //     },
-  //     itemStyle: {
-  //       areaColor: '#f0f0f0',
-  //       borderColor: '#000',
-  //       borderWidth: 1
-  //     }
-  //   }
-  //   }
   }
 ])//设置图表的数据 属性有id location option
 const chartInstances = []//存储图表实例
 
-onMounted(() => {
+ //波纹效果相关函数
+function handlePointMove(event) {
+    const view = mapViewIstance.value
+    if (!view||!view.ready) {
+      return
+    }
+    view.hitTest(event).then((response) => {
+      // console.log(response.results)
+      const results = response.results
+      // console.log('12345678'+results)
+      let hitTargetGraphic = null
+      const graphicRipple = results.find((result) => {
+        return result.graphic && result.graphic.attributes&&result.graphic.attributes.id==='point2'
+      })
+      if (graphicRipple) {
+        console.log(graphicRipple)
+        // console.log(mapViewNode.value)
+        hitTargetGraphic = graphicRipple.graphic
+        console.log(hitTargetGraphic)
+      }
+      if (hitTargetGraphic) {
+        if (activeRippleGraphic !== hitTargetGraphic) {
+          clearRippleEffect()
+          activeRippleGraphic = hitTargetGraphic
+          createRippleEffect(hitTargetGraphic)
+        }
+      } else {
+        if (activeRippleGraphic) {
+          clearRippleEffect()
+          activeRippleGraphic = null
+        }
+      }
+     })
+
+  }
+function createRippleEffect(graphic) {
+    const view = mapViewIstance.value
+    if(!graphic||!view||!graphic.geometry) {
+      return
+    }
+    const screenPoint = view.toScreen(graphic.geometry)
+    console.log("099874"+screenPoint)
+    if (!screenPoint) {return }
+
+    const rippleCount = 3
+    const rippleDuration = 1.5
+    const rippleDelayIncrement = 0.3
+    const rippleColor = "rgba(0,150,255,0.7)"
+    for (let i = 0; i < rippleCount; i++) {
+      const ripple = document.createElement('div')
+      ripple.style.position = 'absolute'
+      ripple.style.borderRad = '50%'
+      ripple.style.backgroundColor = rippleColor
+      ripple.style.width = '10px'
+      ripple.style.height = '10px'
+      // ripple.style.transform = 'translate(-50%,50%) scale(0)'
+      ripple.style.opacity = '1'
+      ripple.style.pointerEvents = 'none'
+      ripple.style.zIndex = '0'
+      const symbolSize = parseFloat(graphic.symbol.size)||24
+      const offsetY = symbolSize / 2 + 10
+      ripple.style.left = `${screenPoint.x}px`;
+      ripple.style.top = `${screenPoint.y + offsetY}px`; // 在点的下方
+      //css动画
+      // ripple.style.animation = `ripple-wave ${rippleDuration}s ease-out ${i*rippleDelayIncrement}s infinite`
+      ripple.style.animationName = 'ripple-wave';
+      ripple.style.animationDuration = `${rippleDuration}s`;
+      ripple.style.animationTimingFunction = 'ease-out';
+      ripple.style.animationDelay = `${i * rippleDelayIncrement}s`;
+      ripple.style.animationIterationCount = 'infinite';
+      mapViewNode.value.appendChild(ripple)
+      rippleEffectElements.push(ripple)
+    }
+    //
+  }
+  //清除波纹效果
+  function clearRippleEffect() {
+    rippleEffectElements.forEach(rippleEl => {
+      if (rippleEl.parentNode) {
+        rippleEl.parentNode.removeChild(rippleEl)
+      }
+    })
+    rippleEffectElements = []
+
+  }//设置波纹函数和清除波纹函数
+
+onMounted(async() => {
+  if (!mapviewDataStore.timestrdata) {
+    console.log('没有空气数据，正在获取')
+    await mapviewDataStore.bird()
+    await mapviewDataStore.airQuality()
+    await mapviewDataStore.A_station(mapviewDataStore.stations)
+    mapviewDataStore.datachuli()
+    console.log('数据处理完毕')
+   }
   const map =new Map({
     basemap: 'streets-navigation-vector',
     spatialReference: {
@@ -426,89 +611,7 @@ const updateEcharts = function () {
 
     })
 }
-  //波纹效果相关函数
-  function handlePointMove(event) {
-    if (!view||!view.ready) {
-      return
-    }
-    view.hitTest(event).then((response) => {
-      // console.log(response.results)
-      const results = response.results
-      // console.log('12345678'+results)
-      let hitTargetGraphic = null
-      const graphicRipple = results.find((result) => {
-        return result.graphic && result.graphic.attributes&&result.graphic.attributes.id==='point2'
-      })
-      if (graphicRipple) {
-        console.log(graphicRipple)
-        // console.log(mapViewNode.value)
-        hitTargetGraphic = graphicRipple.graphic
-        console.log(hitTargetGraphic)
-      }
-      if (hitTargetGraphic) {
-        if (activeRippleGraphic !== hitTargetGraphic) {
-          clearRippleEffect()
-          activeRippleGraphic = hitTargetGraphic
-          createRippleEffect(hitTargetGraphic)
-        }
-      } else {
-        if (activeRippleGraphic) {
-          clearRippleEffect()
-          activeRippleGraphic = null
-        }
-      }
-     })
 
-  }
-  function createRippleEffect(graphic) {
-    if(!graphic||!view||!graphic.geometry) {
-      return
-    }
-    const screenPoint = view.toScreen(graphic.geometry)
-    console.log("099874"+screenPoint)
-    if (!screenPoint) {return }
-
-    const rippleCount = 3
-    const rippleDuration = 1.5
-    const rippleDelayIncrement = 0.3
-    const rippleColor = "rgba(0,150,255,0.7)"
-    for (let i = 0; i < rippleCount; i++) {
-      const ripple = document.createElement('div')
-      ripple.style.position = 'absolute'
-      ripple.style.borderRad = '50%'
-      ripple.style.backgroundColor = rippleColor
-      ripple.style.width = '10px'
-      ripple.style.height = '10px'
-      // ripple.style.transform = 'translate(-50%,50%) scale(0)'
-      ripple.style.opacity = '1'
-      ripple.style.pointerEvents = 'none'
-      ripple.style.zIndex = '0'
-      const symbolSize = parseFloat(graphic.symbol.size)||24
-      const offsetY = symbolSize / 2 + 10
-      ripple.style.left = `${screenPoint.x}px`;
-      ripple.style.top = `${screenPoint.y + offsetY}px`; // 在点的下方
-      //css动画
-      // ripple.style.animation = `ripple-wave ${rippleDuration}s ease-out ${i*rippleDelayIncrement}s infinite`
-      ripple.style.animationName = 'ripple-wave';
-      ripple.style.animationDuration = `${rippleDuration}s`;
-      ripple.style.animationTimingFunction = 'ease-out';
-      ripple.style.animationDelay = `${i * rippleDelayIncrement}s`;
-      ripple.style.animationIterationCount = 'infinite';
-      mapViewNode.value.appendChild(ripple)
-      rippleEffectElements.push(ripple)
-    }
-    //
-  }
-  //清除波纹效果
-  function clearRippleEffect() {
-    rippleEffectElements.forEach(rippleEl => {
-      if (rippleEl.parentNode) {
-        rippleEl.parentNode.removeChild(rippleEl)
-      }
-    })
-    rippleEffectElements = []
-
-  }
 
 
 
@@ -560,6 +663,7 @@ html, body, #viewDiv {
       width: 100%;
       overflow: hidden; /* 防止地图外的滚动条 */
     }
+
 #viewDiv {
   height: 100vh;
   width: 100vw;
@@ -568,6 +672,7 @@ html, body, #viewDiv {
   left: 0;
 
 }
+
 .map-Scenceicon {
   cursor: pointer;
   transition: all 0.3s ease-in-out;
@@ -692,6 +797,11 @@ html, body, #viewDiv {
   font-size: 22px;
   color: #409eff;
 }
+/* ArcGIS View 焦点轮廓
+:deep(.esri-view .esri-view-surface:focus::after), /* 对 scoped 样式使用 :deep */
+/* :deep(.esri-view .esri-view-surface--inset-outline:focus::after) {
+    outline: none !important;
+}  */
 
 /* 消除地图点击时显示蓝色边框 */
 .esri-view{
