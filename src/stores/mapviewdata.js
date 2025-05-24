@@ -1,7 +1,8 @@
 import { defineStore } from "pinia";
 import { ref } from 'vue'
 import { birdData, A_stationData, airQualityData } from '@/api/data.js'
-export const useMapViewDataStore = defineStore('mapviewdata',() => {
+export const useMapViewDataStore = defineStore('mapviewdata', () => {
+  let Pointdata = ref([])
   let stations = ref(2)
   let stationsdata = ref([])
 // let chartData = ref([])
@@ -26,6 +27,7 @@ const A_station = async(stations)=>{
 const airQuality = async()=>{
     const res=await airQualityData()
   console.log(res.data.data)//将数据从字符串切割为数组再取数组第一个数据再转为字符串
+  Pointdata.value = res.data.data
 
   }//请求空气质量数据
   const datachuli = () => {
@@ -46,6 +48,7 @@ const airQuality = async()=>{
     console.log('useStore函数使用')
   }
   return {
+    Pointdata,
     timestrdata,
     stations,
     stationsdata,

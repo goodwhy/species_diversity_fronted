@@ -1,8 +1,5 @@
-<template>
-
+<!-- <template>
   <div id="viewDiv" ref="mapViewNode">
-
-
     <el-tooltip content="3D" placement="bottom" effect="dark">
     <el-icon class="map-Scenceicon" @click="changeScence"><PictureRounded /></el-icon>
     </el-tooltip>
@@ -19,8 +16,7 @@
       <div class="layer-list-content">
         <div class="layer-list-item" v-for="(item,index) in layerList" :key="index">
           <span>{{item.name}}</span>
-          <!--
-           -->
+
           <el-icon class="layer-toggle-icon" @click="handleLayerItemClick(item)">
               <View v-if="alreadyAddLayerIds.includes(item.id)" />
               <Hide v-else />
@@ -33,8 +29,8 @@
 
 
 
-</template>
-<script setup>
+</template> -->
+<!-- <script setup>
 import { PictureRounded,View,Hide} from '@element-plus/icons-vue'
 import { onMounted, onUnmounted, ref, shallowRef, markRaw, watch ,computed} from 'vue'
 import EchartsOverlay from './echarts/EchartsOverlay.vue'
@@ -642,8 +638,8 @@ onUnmounted(() => {
 })
 
 
-</script>
-<style>
+</script> -->
+<!-- <style>
 @keyframes ripple-wave {
   0% {
     transform: translate(-50%, -50%) scale(0.1);
@@ -654,8 +650,9 @@ onUnmounted(() => {
     opacity: 0;
   }
 }
-</style>
-<style scoped>
+</style> -->
+<!-- <style scoped>
+
 html, body, #viewDiv {
       padding: 0;
       margin: 0;
@@ -808,5 +805,243 @@ html, body, #viewDiv {
     /* --esri-view-outline-color: var(--calcite-color-brand); */
     --esri-view-outline: 0px solid var(--esri-view-outline-color);
 
+}
+</style> -->
+<template>
+<div id="GeoMap">
+
+</div>
+</template>
+<script setup>
+import Map from "@geoscene/core/Map";
+import MapView from "@geoscene/core/views/MapView";
+import BasemapToggle from "@geoscene/core/widgets/BasemapToggle";//添加切换底图微件
+import BasemapGallery from "@geoscene/core/widgets/BasemapGallery";//添加底图图层库
+import Graphic from "@geoscene/core/Graphic";
+import GraphicsLayer from "@geoscene/core/layers/GraphicsLayer";
+import Popup from "@geoscene/core/widgets/Popup";
+import { useMapViewDataStore } from "@/stores/mapviewdata";
+import { onMounted, ref } from "vue";
+import { color } from "echarts";
+const mapviewDataStore = useMapViewDataStore();
+
+let Pointdata = ref(null)//获取北京市各区的综合数据 目的是将这些点渲染到地图上
+const aqicolor = (aqi) => {
+  if (aqi <= 50) return 'green';
+  if (aqi <= 100) return 'yellow';
+  if (aqi <= 150) return 'orange';
+  if (aqi <= 200) return 'red';
+  if (aqi <= 300) return 'purple';
+  return 'maroon'; // 超过300的AQI值
+
+}
+const pupoptem = new Popup({
+  collapseEnabled: false,
+  dockEnabled: false,
+  dockOptions: {
+    buttonEnabled: false,
+  },
+  visibleElements: {
+    actionBar: false,
+  },
+
+})//创建一个弹出框
+
+onMounted(() => {
+  const map = new Map({
+    basemap:"tianditu-vector",
+  })
+  const view = new MapView({
+    container: "GeoMap",
+    map: map,
+    center: [116.391275, 39.906217],
+    zoom: 10,
+    background: {
+      color: [10, 10, 10]
+    },
+    popup:pupoptem
+    // constraints: {
+    //   snapToZoom: false,
+    // },
+  });
+  const graphicsLayer = new GraphicsLayer({
+
+  });//创建一个图形图层
+  map.add(graphicsLayer);//将图形图层添加到地图上
+
+  const togglemap = new BasemapToggle({
+    view: view,
+    nextBasemap: "tianditu-image"
+  });//切换底图微件
+  const gallery = new BasemapGallery({
+    view: view,
+    source: {
+      query: {
+        title: "Tianditu",
+
+      }
+    }
+  });//底图画廊微件
+  view.ui.add(togglemap, "top-right");
+  // view.ui.add(gallery, "top-right");
+  view.ui.remove(["attribution", "zoom"]);
+  view.when(async() => {
+    await mapviewDataStore.airQuality()
+    mapviewDataStore.Pointdata//获取北京市各区的综合数据
+    for (let i = 0; i < mapviewDataStore.Pointdata.length; i++) {
+      const point = mapviewDataStore.Pointdata[i];
+      let popuphtml = `<div class="custom-popup-content">
+            <div class="popup-row">
+              <span class="popup-label">监测站点:</span>
+              <span class="popup-value">${point.station_name || '未知站点'}</span>
+              <span class='popup-time'>
+                <div>${point.station_id}</div>
+                <div>${point.aqi_data.timestr}</div>
+                </span>
+            </div>
+            <div class="popup-row">
+              <span class="popup-label">更新时间:</span>
+              <span class="popup-value">${point.aqi_data.timestr || '无数据'}</span>
+            </div>
+            <div class="popup-row">
+              <span class="popup-label">经度:</span>
+              <span class="popup-value">${point.location.longitude !== undefined ? point.location.longitude.toFixed(6) : '无数据'}</span>
+            </div>
+            <div class="popup-row">
+              <span class="popup-label">纬度:</span>
+              <span class="popup-value">${point.location.latitude !== undefined ? point.location.latitude.toFixed(6) : '无数据'}</span>
+            </div>
+            <div class="popup-row">
+              <span class="popup-label">空气质量指数 (AQI):</span>
+              <span class="popup-value" style="color: ${aqicolor(point.aqi_data.aqi)}; font-weight: bold;">
+                ${point.aqi_data.aqi !== undefined ? point.aqi_data.aqi : '无数据'}
+              </span>
+            </div>
+          </div>
+      `
+      const popupTemplate = {
+        title: `<div class="popup-row">
+          <span class="custom-popup-title">${point.station_name}</span>
+          <span class="title-contents">AQI</span>
+          </div>
+         `,
+        content: popuphtml,
+      }
+
+
+
+
+      const pointGraphic = new Graphic({
+        geometry: {
+          type: "point",
+          longitude: point.location.longitude,
+          latitude: point.location.latitude,
+        },
+        symbol: {
+          type: "simple-marker",
+          style: "circle",
+          color: aqicolor(point.aqi_data.aqi), // 使用函数获取颜色
+          size: "20px",
+          // outline: {
+          //   color: "black",
+          //   width: 1
+          // }
+        },
+        attributes: {
+          name: point.station_name,
+          value: point.station_id
+        },
+        popupTemplate: popupTemplate
+      });
+      graphicsLayer.add(pointGraphic);
+    }
+
+
+
+  })
+})
+
+</script>
+<style>
+#GeoMap {
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  overflow: hidden;
+
+  position: absolute;
+}
+.geoscene-view{
+    /* --esri-view-outline-color: var(--calcite-color-brand); */
+    --geoscene-view-outline: 0px solid var(--geoscene-view-outline-color);
+
+}
+.geoscene-popup__main-container {
+  background-color: #f9f9f9; /* 更改背景色 */
+  border-radius: 6px;       /* 圆角 */
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15); /* 添加阴影 */
+}
+
+/* 自定义 Popup 标题样式 */
+.custom-popup-title {
+  font-size: 25px; /* 标题字号 */
+  /* font-weight: bold; */
+  color: #337ab7; /* 标题颜色 */
+  display: block; /* 确保标题独占一行 */
+  margin-top: 5px;
+
+
+
+}
+.title-contents {
+  font-size: 17px; /* 标题内容字号 */
+  display: inline;
+  color: #666; /* 标题内容颜色 */
+  background-color: #286090;  /* 标题内容背景颜色 */
+  padding: 4px 20px; /* 添加内边距 */
+  border-radius: 10px; /* 圆角 */
+  margin-left: 20px;
+
+
+
+
+}
+
+/* 自定义 Popup 内容区域样式 */
+.custom-popup-content {
+  font-family: "Microsoft YaHei", "微软雅黑", sans-serif; /* 使用更美观的中文字体 */
+  font-size: 14px;
+  color: #333; /* 内容文字颜色 */
+  line-height: 1.6; /* 行高 */
+}
+
+.popup-row {
+  display: flex; /* 使用 flex 布局方便对齐 */
+  margin-bottom: 6px; /* 每行之间的间距 */
+}
+
+.popup-label {
+  font-weight: 600; /* 标签加粗 */
+  color: #f9f9f9;       /* 标签颜色稍浅 */
+  min-width: 100px; /* 固定标签宽度，使其对齐 */
+  margin-right: 8px;
+}
+
+.popup-value {
+  flex-grow: 1; /* 值部分占据剩余空间 */
+  color: #f9f9f9;   /* 值颜色 */
+}
+
+/* 如果使用了 actions，可以为 action 按钮添加样式 */
+.geoscene-popup__action-button {
+  /* 自定义按钮样式 */
+  background-color: #337ab7;
+  color: white;
+  padding: 6px 10px;
+  border-radius: 4px;
+}
+.geoscene-popup__action-button:hover {
+  background-color: #286090;
 }
 </style>
