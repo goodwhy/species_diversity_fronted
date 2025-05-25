@@ -811,8 +811,22 @@ html, body, #viewDiv {
 <div id="GeoMap">
 
 </div>
+<div class="echarts-overlay">
+  <div class="echarts-buttons">
+    <el-button type="primary" @click="clickLine">折线图</el-button>
+    <el-button type="primary" @click="clickTime">时间表</el-button>
+  </div>
+  <div class="echarts-line" v-if="echartsshow">
+
+
+  </div>
+  <div class="echarts-time" else>
+
+  </div>
+</div>
 </template>
 <script setup>
+import * as echarts from "echarts";
 import Map from "@geoscene/core/Map";
 import MapView from "@geoscene/core/views/MapView";
 import BasemapToggle from "@geoscene/core/widgets/BasemapToggle";//添加切换底图微件
@@ -824,6 +838,7 @@ import { useMapViewDataStore } from "@/stores/mapviewdata";
 import { onMounted, ref } from "vue";
 import { color } from "echarts";
 const mapviewDataStore = useMapViewDataStore();
+let echartsshow = ref(true)//控制图表的显示和隐藏
 
 let Pointdata = ref(null)//获取北京市各区的综合数据 目的是将这些点渲染到地图上
 const aqicolor = (aqi) => {
@@ -833,6 +848,160 @@ const aqicolor = (aqi) => {
   if (aqi <= 200) return 'red';
   if (aqi <= 300) return 'purple';
   return 'maroon'; // 超过300的AQI值
+
+}
+const aqicolorvalue = (aqi) => {
+
+    if (aqi <= 50) return '优';
+    if (aqi <= 100) return '良';
+    if (aqi <= 150) return '轻度污染';
+    if (aqi <= 200) return '中度污染';
+    if (aqi <= 300) return '重度污染';
+    return '严重污染'; // 超过300的AQI值
+
+}
+const initLineEcharts = () => {
+  const echartsinit = echarts.init(document.querySelector('.echarts-line'))
+  const option = {
+    grid: {
+      left: '0%',
+      right: '3%',
+      top: '15%',
+      bottom: '4%',
+      containLabel: true
+    },
+    title: {
+      text: '北京市城市空气质量检测折线图 -- 24小时aqi数据的变化',
+      left: 20,
+      textStyle: {
+        color: 'white',//设置标题文字颜色
+        fontSize: 16,
+        // fontWeight: 'bold'
+      }
+    },
+    // legend: {
+    //   data: ['aqi', 'PM2.5','PM10','NO2','CO','O3','SO2'],
+    //   right: 'center',
+    //   top: '0',
+    //   textStyle: {
+    //     color: 'white',//设置图例文字颜色
+    //   }
+    // },
+    tooltip: {
+      show: true,
+      trigger: 'axis',//触发类型
+    },
+    xAxis: {
+      type: 'category',
+      data: mapviewDataStore.timestrdata,
+      boundaryGap: false,//紧挨边缘
+      axisLabel: {
+        color: 'white',//设置x轴文字颜色
+      },
+      axisLine: {
+        lineStyle: {
+          color: 'white'//设置x轴线颜色
+        }
+      },
+
+    },
+    yAxis: {
+      type: 'value',
+      show:false,
+      scale: true,//设置y轴的刻度脱离0值比例
+    },
+    series: [
+      {
+        name: 'aqi',
+        type: 'line',
+        data: mapviewDataStore.aqidata,
+        markPoint: {
+          data: [
+            { type: 'max', name: '最大值' },
+            { type: 'min', name: '最小值' }
+          ]
+        },
+        // markLine: {
+        //   data: [
+        //     { type: 'average', name: '平均值' }
+        //   ]
+        // },
+
+        smooth: true,//设置折线图平滑
+        lineStyle: {
+          color: 'yellow',//设置折线的颜色
+          type: 'solid',//设置折线的类型 dashed(虚线), dotted(点线), solid
+        },//设置折线的样式
+        // areaStyle: {
+        //   color: 'rgba(255, 0, 0, 0.5)'//设置折线下面的颜色
+        // },
+        // stack:'alll'
+
+
+      },
+      // {
+      //   name: 'PM2.5',
+      //   type: 'line',
+
+      //   data: mapviewDataStore.pm25data,
+      //   // stack: 'alll',
+      //   // areaStyle: {
+      //   //   color: 'rgba(0, 0, 255, 0.5)'//设置折线下面的颜色
+      //   // },
+      // },//堆叠图，在第一个折线图的基础上加一个折线图
+      // {
+      //   name: 'PM10',
+      //   type: 'line',
+
+      //   data: mapviewDataStore.pm10data,
+      //   // stack: 'alll',
+      //   // areaStyle: {
+      //   //   color: 'rgba(0, 0, 255, 0.5)'//设置折线下面的颜色
+      //   // },
+      // },
+      // {
+      //   name: 'NO2',
+      //   type: 'line',
+
+      //   data: mapviewDataStore.no2data,
+      //   // stack: 'alll',
+      //   // areaStyle: {
+      //   //   color: 'rgba(0, 0, 255, 0.5)'//设置折线下面的颜色
+      //   // },
+      // },
+      // {
+      //   name: 'CO',
+      //   type: 'line',
+
+      //   data: mapviewDataStore.codata,
+      //   // stack: 'alll',
+      //   areaStyle: {
+      //     color: 'rgba(0, 0, 255, 0.5)'//设置折线下面的颜色
+      //   },
+      // },
+      // {
+      //   name: 'O3',
+      //   type: 'line',
+
+      //   data: mapviewDataStore.o3data,
+      //   // stack: 'alll',
+      //   // areaStyle: {
+      //   //   color: 'rgba(0, 0, 255, 0.5)'//设置折线下面的颜色
+      //   // },
+      // },
+      // {
+      //   name: 'SO2',
+      //   type: 'line',
+
+      //   data: mapviewDataStore.so2data,
+      //   // stack: 'alll',
+      //   // areaStyle: {
+      //   //   color: 'rgba(0, 0, 255, 0.5)'//设置折线下面的颜色
+      //   // },
+      // }
+    ]
+  }
+  echartsinit.setOption(option)//设置折线图的option
 
 }
 const pupoptem = new Popup({
@@ -845,7 +1014,17 @@ const pupoptem = new Popup({
     actionBar: false,
   },
 
+
 })//创建一个弹出框
+const clickLine = () => {
+  echartsshow.value = true
+  initLineEcharts()//初始化折线图
+}
+const clickTime = () => {
+  echartsshow.value = false
+  // initTimeEcharts()//初始化时间表
+  console.log('时间表')
+}
 
 onMounted(() => {
   const map = new Map({
@@ -886,41 +1065,40 @@ onMounted(() => {
   // view.ui.add(gallery, "top-right");
   view.ui.remove(["attribution", "zoom"]);
   view.when(async() => {
+
+    await mapviewDataStore.A_station(mapviewDataStore.stations)
+    mapviewDataStore.datachuli()//处理数据 为了渲染echarts图表
+    initLineEcharts()//初始化折线图
+
     await mapviewDataStore.airQuality()
     mapviewDataStore.Pointdata//获取北京市各区的综合数据
     for (let i = 0; i < mapviewDataStore.Pointdata.length; i++) {
       const point = mapviewDataStore.Pointdata[i];
-      let popuphtml = `<div class="custom-popup-content">
-            <div class="popup-row">
-              <span class="popup-label">监测站点:</span>
-              <span class="popup-value">${point.station_name || '未知站点'}</span>
-              <span class='popup-time'>
-                <div>${point.station_id}</div>
-                <div>${point.aqi_data.timestr}</div>
-                </span>
-            </div>
-            <div class="popup-row">
-              <span class="popup-label">更新时间:</span>
-              <span class="popup-value">${point.aqi_data.timestr || '无数据'}</span>
-            </div>
-            <div class="popup-row">
-              <span class="popup-label">经度:</span>
-              <span class="popup-value">${point.location.longitude !== undefined ? point.location.longitude.toFixed(6) : '无数据'}</span>
-            </div>
-            <div class="popup-row">
-              <span class="popup-label">纬度:</span>
-              <span class="popup-value">${point.location.latitude !== undefined ? point.location.latitude.toFixed(6) : '无数据'}</span>
-            </div>
-            <div class="popup-row">
-              <span class="popup-label">空气质量指数 (AQI):</span>
-              <span class="popup-value" style="color: ${aqicolor(point.aqi_data.aqi)}; font-weight: bold;">
-                ${point.aqi_data.aqi !== undefined ? point.aqi_data.aqi : '无数据'}
+      let popuphtml =
+          `<div class="custom-popup-content">
+            <div class="popup-row-first">
+              <span class="popup-aqi-value">${point.aqi_data.aqi}</span>
+              <span class="popup-aqi-color" style="background-color: ${aqicolor(point.aqi_data.aqi)};">${aqicolorvalue(point.aqi_data.aqi)}</span>
+              <span class='popup-aqi-time'>
+                <div>监测站点id：${point.station_id}</div>
+                <div> 更新时间：${point.aqi_data.timestr}</div>
               </span>
             </div>
+
+            <div class="popup-row">
+              <span class="popup-label">健康指引：</span>
+              <span class="popup-value">${point.aqi_data.description || '无数据'}</span>
+            </div>
+            <div class="popup-row">
+              <span class="popup-label">建议措施：</span>
+              <span class="popup-value">${point.aqi_data.measure || '无数据'}</span>
+            </div>
           </div>
+
+
       `
       const popupTemplate = {
-        title: `<div class="popup-row">
+        title: `<div class="popup-row-title">
           <span class="custom-popup-title">${point.station_name}</span>
           <span class="title-contents">AQI</span>
           </div>
@@ -954,7 +1132,7 @@ onMounted(() => {
         popupTemplate: popupTemplate
       });
       graphicsLayer.add(pointGraphic);
-    }
+    }//添加北京市各个站点显示到底图上
 
 
 
@@ -972,6 +1150,37 @@ onMounted(() => {
 
   position: absolute;
 }
+.echarts-overlay {
+  position: absolute;
+  bottom: 10px;
+  left: 6px;
+  /* right: 10px; */
+  border-radius: 8px;
+  width: 1035px;
+  height: 240px;
+  background-color:rgba(0,0,0,0.5);
+  pointer-events: auto; /* 禁用鼠标事件 */
+  z-index: 10;
+  border:1px solid #ccc;
+}
+.echarts-buttons{
+
+  position: relative;
+  top: 10px;
+  left: 10px;
+}
+.echarts-line{
+  position: relative;
+  top: 20px;
+
+  left: 10px;
+  right: 10px;
+  /* background-color: rgba(0, 0, 0, 0.5); */
+  width: 1015px;
+  height: 188px;
+  border-radius: 9px;
+  /* bottom: 10px; */
+}
 .geoscene-view{
     /* --esri-view-outline-color: var(--calcite-color-brand); */
     --geoscene-view-outline: 0px solid var(--geoscene-view-outline-color);
@@ -981,15 +1190,24 @@ onMounted(() => {
   background-color: #f9f9f9; /* 更改背景色 */
   border-radius: 6px;       /* 圆角 */
   box-shadow: 0 2px 8px rgba(0,0,0,0.15); /* 添加阴影 */
+  color:#333333
 }
 
+.popup-row-title {
+  display: flex; /* 使用 flex 布局方便对齐 */
+  /* flex-direction: column; */
+  align-items: flex-start;
+  height: 20px; /* 每行高度 */
+  margin-bottom: 0px; /* 每行之间的间距 */
+}
 /* 自定义 Popup 标题样式 */
 .custom-popup-title {
   font-size: 25px; /* 标题字号 */
   /* font-weight: bold; */
-  color: #337ab7; /* 标题颜色 */
+  color: #5dade2; /* 标题颜色 */
   display: block; /* 确保标题独占一行 */
   margin-top: 5px;
+
 
 
 
@@ -997,11 +1215,12 @@ onMounted(() => {
 .title-contents {
   font-size: 17px; /* 标题内容字号 */
   display: inline;
-  color: #666; /* 标题内容颜色 */
+  color: #eaf2f8; /* 标题内容颜色 */
   background-color: #286090;  /* 标题内容背景颜色 */
   padding: 4px 20px; /* 添加内边距 */
   border-radius: 10px; /* 圆角 */
   margin-left: 20px;
+
 
 
 
@@ -1012,36 +1231,94 @@ onMounted(() => {
 .custom-popup-content {
   font-family: "Microsoft YaHei", "微软雅黑", sans-serif; /* 使用更美观的中文字体 */
   font-size: 14px;
-  color: #333; /* 内容文字颜色 */
-  line-height: 1.6; /* 行高 */
-}
+  color:black; /* 内容颜色 */
 
+  line-height: 1.6; /* 行高 */
+  /* padding-top:0px */
+}
+.popup-row-first{
+  display: flex; /* 使用 flex 布局方便对齐 */
+  height: 60px;
+  background-color: #337ab7; /* AQI 值背景颜色 */
+  padding: 0px 10px; /* 内边距 */
+  align-items: center; /* 垂直居中 */
+  border-radius: 4px; /* 圆角 */
+  margin-bottom: 10px;
+}
+.popup-aqi-value {
+  font-size: 30px; /* AQI 值字号 */
+  font-weight: bold; /* AQI 值加粗 */
+  color: #fff; /* AQI 值颜色 */
+  background-color: #337ab7; /* AQI 值背景颜色 */
+  padding: 4px 15px; /* 内边距 */
+  border-radius: 4px; /* 圆角 */
+  margin-right: 30px; /* 与其他内容的间距 */
+}
+.popup-aqi-color {
+  font-size: 13px; /* AQI 状态字号 */
+  /* color: #fff; AQI 状态颜色 */
+  /* margin-left: 0px; 与 AQI 值的间距 */
+  margin-right: 35px;
+  height: 30px; /* AQI 状态高度 */
+  line-height: 30px;
+  text-align: center; /* AQI 状态文字居中 */
+
+  display: flex;
+
+  /* background-color: yellow; */
+  padding: 0px 15px;
+  border-radius: 13px; /* 圆角 */
+
+}
+.popup-aqi-time{
+  font-size: 12px; /* AQI 时间字号 */
+  color: #fff; /* AQI 时间颜色 */
+  margin-left: 0px; /* 与 AQI 值的间距 */
+  /* display: flex; */
+  /* flex-direction: column; 垂直排列 */
+}
 .popup-row {
   display: flex; /* 使用 flex 布局方便对齐 */
-  margin-bottom: 6px; /* 每行之间的间距 */
+  /* flex-direction: column; */
+  align-items: flex-start;
+  height: 30px; /* 每行高度 */
+  margin-bottom: 20px; /* 每行之间的间距 */
 }
 
 .popup-label {
   font-weight: 600; /* 标签加粗 */
   color: #f9f9f9;       /* 标签颜色稍浅 */
-  min-width: 100px; /* 固定标签宽度，使其对齐 */
-  margin-right: 8px;
+  min-width: 90px; /* 固定标签宽度，使其对齐 */
+  /* margin-right: 5px; */
+  flex-shrink: 0;
+  margin-bottom: 10px;
 }
 
+
 .popup-value {
-  flex-grow: 1; /* 值部分占据剩余空间 */
+  flex-grow: 1;
   color: #f9f9f9;   /* 值颜色 */
+  word-break: break-word; /* 自动换行 */
+
+  margin-bottom: 20px;
 }
 
 /* 如果使用了 actions，可以为 action 按钮添加样式 */
-.geoscene-popup__action-button {
-  /* 自定义按钮样式 */
+/* .geoscene-popup__action-button {
+   自定义按钮样式
   background-color: #337ab7;
   color: white;
   padding: 6px 10px;
   border-radius: 4px;
+} */
+/* .geoscene-popup__action-button:hover {
+  background-color: #f2f5f8;
+} */
+ .geoscene-popup__header-buttons .geoscene-icon {
+  color: #f9f9f9 !important; /* 灰色图标 */
 }
-.geoscene-popup__action-button:hover {
-  background-color: #286090;
+.geoscene-popup__header-buttons .geoscene-button:hover .geoscene-icon {
+  color: #f9f9f9 !important; /* 悬停时深色图标 */
 }
+
 </style>

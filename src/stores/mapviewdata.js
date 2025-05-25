@@ -32,7 +32,7 @@ const airQuality = async()=>{
   }//请求空气质量数据
   const datachuli = () => {
     //获取时间数据
-    timestrdata.value = stationsdata.value.sort((a, b) => { return a.timestr < b.timestr ? -1 : 1 }).map((item) => { return item.timestr }).map((item) => { return item.slice(3, 5) })
+    timestrdata.value = stationsdata.value.sort((a, b) => { return a.timestr < b.timestr ? -1 : 1 }).map((item) => { return item.timestr }).map((item) => { return item.slice(3, 6) })
     //获取aqi数据 以下同aqi数据
   aqidata.value = stationsdata.value.sort((a, b) => { return a.timestr < b.timestr? -1 : 1  }).map((item) => { return item.aqi })
   o3data.value = stationsdata.value.sort((a, b) => { return a.timestr < b.timestr? -1 : 1  }).map((item) => { return item.o3.split(',')[2].toString() })
