@@ -41,7 +41,7 @@ const airQuality = async()=>{
   so2data.value = stationsdata.value.sort((a, b) => { return a.timestr < b.timestr? -1 : 1  }).map((item) => { return item.o3.split(',')[1].toString() })
   pm10data.value = stationsdata.value.sort((a, b) => { return a.timestr < b.timestr? -1 : 1  }).map((item) => { return item.o3.split(',')[1].toString() })
     no2data.value = stationsdata.value.sort((a, b) => { return a.timestr < b.timestr ? -1 : 1 }).map((item) => { return item.o3.split(',')[1].toString() })
-    console.log(timestrdata.value)
+    console.log(Object.values(timestrdata.value))
 
   }
   const ceshi = () => {

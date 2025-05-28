@@ -817,16 +817,39 @@ html, body, #viewDiv {
     <el-button type="primary" @click="clickTime">时间表</el-button>
   </div>
   <div class="echarts-line" v-if="echartsshow">
-
-
   </div>
-  <div class="echarts-time" else>
+  <div class="echarts-time" v-else>
+    <div class="timeline-container">
+      <div class="timeline" ref="timelineref" @click="handleTimelineClick">
+        <div class="timeline-handle" :style="{left:subTimeLineLeft+'px'}" @mousedown.prevent="startDragHandle"></div>
+      </div>
+      <div class="time-labels">
+        <span v-for="(hour,index) in hours" :key="index">{{hour}}时
+        </span>
+       </div>
+    </div>
+
+    <div class="player-controls">
+      <el-button-group>
+        <el-button @click="playTimeLine" circle type="primary"  v-if="!isPlaying">
+          <el-icon><VideoPlay /></el-icon>
+        </el-button>
+        <el-button @click="pauseTimeLine" circle type="primary"  v-else>
+          <el-icon><VideoPause /></el-icon>
+        </el-button>
+
+      </el-button-group>
+
+
+    </div>
+
 
   </div>
 </div>
 </template>
 <script setup>
 import * as echarts from "echarts";
+import { VideoPlay,VideoPause, RefreshRight } from "@element-plus/icons-vue";
 import Map from "@geoscene/core/Map";
 import MapView from "@geoscene/core/views/MapView";
 import BasemapToggle from "@geoscene/core/widgets/BasemapToggle";//添加切换底图微件
@@ -835,9 +858,123 @@ import Graphic from "@geoscene/core/Graphic";
 import GraphicsLayer from "@geoscene/core/layers/GraphicsLayer";
 import Popup from "@geoscene/core/widgets/Popup";
 import { useMapViewDataStore } from "@/stores/mapviewdata";
-import { onMounted, ref } from "vue";
-import { color } from "echarts";
+import { onMounted, ref , computed,watch,nextTick } from "vue";
+
+
 const mapviewDataStore = useMapViewDataStore();
+const hours = [18,19,20,21,22,23,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17];//时间轴的小时标签
+const subTimeLineLeft = ref(0)
+const currentTimeIndex = ref(0)//当前时间索引
+const timelineref = ref(null)//时间轴的ref
+const timelineWidth = ref(0)//时间轴的宽度
+const handleWidth = 14//滑块的宽度应与css中的Width一致
+const isPlaying = ref(false)//是否正在播放
+const playInterval = ref(null)//播放的定时器
+
+
+const updateHandlePosition = () => {
+  if(timelineWidth.value>0&&hours.length>0){
+    const segmentWidth = timelineWidth.value / (hours.length - 1)//这是每小时滑块进步的宽度
+    subTimeLineLeft.value = currentTimeIndex.value * segmentWidth //计算滑块的位置  这样会使滑块左边溢出当currentTimeIndex为0时滑块左边会溢出
+    console.log('滑块位置:', subTimeLineLeft.value,segmentWidth);
+    subTimeLineLeft.value = Math.max(0, Math.min(subTimeLineLeft.value, timelineWidth.value - handleWidth))//确保滑块位置在时间轴范围内
+  }
+}
+const updateTimeFromHanle = () => {
+  if (timelineWidth.value > 0 && hours.length > 2) {
+    const segmentWidth = timelineWidth.value / (hours.length - 1);
+    const handleCenterPosition = subTimeLineLeft.value ;
+    let newIndex = Math.round(handleCenterPosition / segmentWidth);//Math.round()四舍五入
+    newIndex = Math.max(0, Math.min(newIndex, hours.length - 1));//确保索引在范围内
+    if(currentTimeIndex.value !== newIndex){
+      currentTimeIndex.value = newIndex;
+      console.log('当前时间索引:', currentTimeIndex.value);
+      updateHandlePosition();
+    }
+
+    console.log('当前时间索引:', currentTimeIndex.value);
+  }
+}
+
+
+
+
+// 播放时间轴
+const playTimeLine = () => {
+  if (isPlaying.value) return; // 如果已经在播放，直接返回
+  isPlaying.value = true;
+  clearInterval(playInterval.value); // 清除之前的定时器
+  playInterval.value = setInterval(() => {
+    currentTimeIndex.value = (currentTimeIndex.value + 1) % hours.length; // 循环播放
+  },1000)
+
+};
+
+// 暂停时间轴
+const pauseTimeLine = () => {
+  isPlaying.value = false;
+  clearInterval(playInterval.value); // 清除定时器
+};
+
+const handleTimelineClick = (event) => {
+  if (!timelineref.value) return;
+  const rect = timelineref.value.getBoundingClientRect();
+  const clickX = event.clientX - rect.left; // 获取点击位置相对于时间轴的左边距
+  let newLeft = clickX ; // 计算滑块的新位置
+  newLeft = Math.max(0, Math.min(newLeft, rect.width - handleWidth)); // 确保滑块位置在时间轴范围内
+  subTimeLineLeft.value = newLeft; // 更新滑块位置
+  updateTimeFromHanle(); // 更新当前时间索引
+  if(isPlaying.value) {
+    pauseTimeLine(); // 如果正在播放，暂停
+  }
+}
+//滑块移动逻辑
+let isDragging = false
+let dragStartX = 0
+let initialHandleLeft = 0
+const startDragHandle = (event) => {
+  isDragging = true;
+  dragStartX = event.clientX; // 鼠标按下时的X坐标
+  initialHandleLeft = subTimeLineLeft.value; // 记录滑块初始位置
+  if(isPlaying.value) {
+    pauseTimeLine(); // 如果正在播放，暂停
+  }
+  document.addEventListener('mousemove', onDragHandle);
+  document.addEventListener('mouseup', endDragHandle);
+
+};
+const onDragHandle = (event) => {
+  if (!isDragging) return;
+  const deltaX = event.clientX - dragStartX; // 计算鼠标移动的距离
+  let newLeft = initialHandleLeft + deltaX; // 更新滑块位置
+  const rect = timelineref.value.getBoundingClientRect();
+  newLeft = Math.max(0, Math.min(newLeft, rect.width - handleWidth)); // 确保滑块位置在时间轴范围内
+  subTimeLineLeft.value = newLeft; // 更新滑块位置
+  updateTimeFromHanle(); // 更新当前时间索引
+};
+const endDragHandle = () => {
+  isDragging = false;
+  document.removeEventListener('mousemove', onDragHandle);
+  document.removeEventListener('mouseup', endDragHandle);
+};
+watch(currentTimeIndex, (newIndex) => {
+  updateHandlePosition();
+  console.log('当前时间索引:', newIndex);
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 let echartsshow = ref(true)//控制图表的显示和隐藏
 
 let Pointdata = ref(null)//获取北京市各区的综合数据 目的是将这些点渲染到地图上
@@ -860,7 +997,9 @@ const aqicolorvalue = (aqi) => {
     return '严重污染'; // 超过300的AQI值
 
 }
-const initLineEcharts = () => {
+const initLineEcharts = async () => {
+  await mapviewDataStore.A_station(mapviewDataStore.stations)
+    mapviewDataStore.datachuli()//处理数据 为了渲染echarts图表
   const echartsinit = echarts.init(document.querySelector('.echarts-line'))
   const option = {
     grid: {
@@ -1020,9 +1159,14 @@ const clickLine = () => {
   echartsshow.value = true
   initLineEcharts()//初始化折线图
 }
-const clickTime = () => {
+const clickTime = async() => {
   echartsshow.value = false
   // initTimeEcharts()//初始化时间表
+  await nextTick()//确保时间轴的DOM元素已经渲染完成
+  if(timelineref.value){
+    timelineWidth.value = timelineref.value.offsetWidth//获取时间轴的宽度
+    updateHandlePosition()//更新滑块的位置
+  }
   console.log('时间表')
 }
 
@@ -1066,8 +1210,7 @@ onMounted(() => {
   view.ui.remove(["attribution", "zoom"]);
   view.when(async() => {
 
-    await mapviewDataStore.A_station(mapviewDataStore.stations)
-    mapviewDataStore.datachuli()//处理数据 为了渲染echarts图表
+
     initLineEcharts()//初始化折线图
 
     await mapviewDataStore.airQuality()
@@ -1153,11 +1296,11 @@ onMounted(() => {
 .echarts-overlay {
   position: absolute;
   bottom: 10px;
-  left: 6px;
+  left: 5px;
   /* right: 10px; */
   border-radius: 8px;
-  width: 1035px;
-  height: 240px;
+  width: 99%;
+  height: 250px;
   background-color:rgba(0,0,0,0.5);
   pointer-events: auto; /* 禁用鼠标事件 */
   z-index: 10;
@@ -1173,14 +1316,115 @@ onMounted(() => {
   position: relative;
   top: 20px;
 
-  left: 10px;
+  left: 9px;
   right: 10px;
   /* background-color: rgba(0, 0, 0, 0.5); */
-  width: 1015px;
-  height: 188px;
+  width: 99%;
+  height: 200px;
   border-radius: 9px;
   /* bottom: 10px; */
 }
+.echarts-time{
+  position: relative;
+  top: 20px; /* 与折线图区域对齐 */
+  left: 0;
+  width: 100%;
+  /* background-color: #286090; */
+  height: calc(100% - 50px); /* 确保高度与折线图区域一致 */
+  /* background-color: rgba(0, 0, 0, 0.5); /* 移除，父级已有背景 */
+  border-radius: 9px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: center; /* 垂直居中内容 */
+  align-items: center;
+  padding: 20px; /* 增加内边距 */
+}
+.timeline-container {
+  width: 90%; /* 时间轴容器宽度 */
+  margin: 0 auto; /* 水平居中 */
+  /* background-color: #ccc; */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.timeline{
+  position: relative;
+  width: 100%; /* 占满容器宽度 */
+  height: 20px; /* 时间轴条更细 */
+  background-color: #555; /* 深色时间轴背景 */
+  border-radius: 9px; /* 圆角 */
+  cursor: pointer;
+  margin-bottom: 10px; /* 与标签的间距 */
+}
+
+.timeline-handle {
+  position: absolute;
+  width: 16px; /* 滑块宽度 */
+  height: 16px; /* 滑块高度 */
+  background-color: #409eff; /* Element Plus 主题色 */
+  border: 2px solid white; /* 白色边框，使其更突出 */
+  border-radius: 50%; /* 圆形滑块 */
+  cursor: grab; /* 拖动指针 */
+  top: 50%; /* 垂直居中 */
+  transform: translateY(-50%); /* 精确垂直居中 */
+  box-shadow: 0 0 8px rgba(0,0,0,0.5); /* 轻微阴影 */
+  z-index: 12; /* 确保在时间轴之上 */
+}
+.timeline-handle:active {
+  cursor: grabbing; /* 拖动时的指针样式 */
+}
+.time-labels {
+  width: 100%; /* 占满容器宽度 */
+  display: flex;
+  justify-content: space-between;
+  color: #fff;
+  font-size: 13px;
+  padding: 0 0px; /* 微调，让首尾标签不完全贴边 */
+  box-sizing: border-box;
+  margin-bottom: 0px; /* 与播放控件的间距 */
+}
+.time-labels span {
+  flex-shrink: 0; /* 防止标签被压缩 */
+   transform: translateX(-50%); /* 使标签文字中心对齐其逻辑位置 */
+}
+.time-labels span:first-child {
+  transform: translateX(0%);
+}
+.time-labels span:nth-child(n+9):nth-child(-n+24) {
+  transform: translateX(-5%);
+}
+
+
+
+
+.player-controls {
+
+
+
+  display: flex;
+  padding: 0 100px;
+  align-items: center;
+  margin-top: 10px;
+}
+.el-button-group {
+  position: relative;
+  left: 50%;
+  transform: translateX(-50%);
+
+}
+
+
+/* .time-lables{
+  position: relative;
+  top: 100px;
+  /* left: 0; */
+  /* width: 100%; */
+  /* display: flex; */
+  /* justify-content: space-between; */
+  /*color: #fff;  时间标签颜色
+
+} */
 .geoscene-view{
     /* --esri-view-outline-color: var(--calcite-color-brand); */
     --geoscene-view-outline: 0px solid var(--geoscene-view-outline-color);
