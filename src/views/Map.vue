@@ -824,7 +824,7 @@ html, body, #viewDiv {
         <div class="timeline-handle" :style="{left:subTimeLineLeft+'px'}" @mousedown.prevent="startDragHandle"></div>
       </div>
       <div class="time-labels">
-        <span v-for="(hour,index) in hours" :key="index">{{hour}}时
+        <span v-for="(hour,index) in hours" :key="index">{{hour}}
         </span>
        </div>
     </div>
@@ -858,11 +858,12 @@ import Graphic from "@geoscene/core/Graphic";
 import GraphicsLayer from "@geoscene/core/layers/GraphicsLayer";
 import Popup from "@geoscene/core/widgets/Popup";
 import { useMapViewDataStore } from "@/stores/mapviewdata";
-import { onMounted, ref , computed,watch,nextTick } from "vue";
+import { onMounted, ref , computed,watch,nextTick ,onUnmounted} from "vue";
 
 
 const mapviewDataStore = useMapViewDataStore();
-const hours = [18,19,20,21,22,23,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17];//时间轴的小时标签
+
+let hours = ref([])//时间轴的小时标签
 const subTimeLineLeft = ref(0)
 const currentTimeIndex = ref(0)//当前时间索引
 const timelineref = ref(null)//时间轴的ref
@@ -871,24 +872,25 @@ const handleWidth = 14//滑块的宽度应与css中的Width一致
 const isPlaying = ref(false)//是否正在播放
 const playInterval = ref(null)//播放的定时器
 
+let timelineResizeObserver = null
 
 const updateHandlePosition = () => {
-  if(timelineWidth.value>0&&hours.length>0){
-    const segmentWidth = timelineWidth.value / (hours.length - 1)//这是每小时滑块进步的宽度
+  if(timelineWidth.value>0&&hours.value.length>0){
+    const segmentWidth = timelineWidth.value / (hours.value.length - 1)//这是每小时滑块进步的宽度
     subTimeLineLeft.value = currentTimeIndex.value * segmentWidth //计算滑块的位置  这样会使滑块左边溢出当currentTimeIndex为0时滑块左边会溢出
     console.log('滑块位置:', subTimeLineLeft.value,segmentWidth);
     subTimeLineLeft.value = Math.max(0, Math.min(subTimeLineLeft.value, timelineWidth.value - handleWidth))//确保滑块位置在时间轴范围内
   }
 }
 const updateTimeFromHanle = () => {
-  if (timelineWidth.value > 0 && hours.length > 2) {
-    const segmentWidth = timelineWidth.value / (hours.length - 1);
+  if (timelineWidth.value > 0 && hours.value.length > 2) {
+    const segmentWidth = timelineWidth.value / (hours.value.length - 1);
     const handleCenterPosition = subTimeLineLeft.value ;
     let newIndex = Math.round(handleCenterPosition / segmentWidth);//Math.round()四舍五入
-    newIndex = Math.max(0, Math.min(newIndex, hours.length - 1));//确保索引在范围内
+    newIndex = Math.max(0, Math.min(newIndex, hours.value.length - 1));//确保索引在范围内
     if(currentTimeIndex.value !== newIndex){
       currentTimeIndex.value = newIndex;
-      console.log('当前时间索引:', currentTimeIndex.value);
+      console.log('当前时间索引:', currentTimeIndex.value,hours.value.length);
       updateHandlePosition();
     }
 
@@ -905,7 +907,7 @@ const playTimeLine = () => {
   isPlaying.value = true;
   clearInterval(playInterval.value); // 清除之前的定时器
   playInterval.value = setInterval(() => {
-    currentTimeIndex.value = (currentTimeIndex.value + 1) % hours.length; // 循环播放
+    currentTimeIndex.value = (currentTimeIndex.value + 1) % hours.value.length; // 循环播放
   },1000)
 
 };
@@ -999,14 +1001,16 @@ const aqicolorvalue = (aqi) => {
 }
 const initLineEcharts = async () => {
   await mapviewDataStore.A_station(mapviewDataStore.stations)
-    mapviewDataStore.datachuli()//处理数据 为了渲染echarts图表
+  mapviewDataStore.datachuli()//处理数据 为了渲染echarts图表
+  mapviewDataStore.timeArryData() //获取时间轴数据
+  hours.value = mapviewDataStore.timearry//时间轴的小时标签
   const echartsinit = echarts.init(document.querySelector('.echarts-line'))
   const option = {
     grid: {
       left: '0%',
-      right: '3%',
-      top: '15%',
-      bottom: '4%',
+      right: '5%',
+      top: '25%',
+      bottom: '5%',
       containLabel: true
     },
     title: {
@@ -1157,6 +1161,7 @@ const pupoptem = new Popup({
 })//创建一个弹出框
 const clickLine = () => {
   echartsshow.value = true
+
   initLineEcharts()//初始化折线图
 }
 const clickTime = async() => {
@@ -1166,6 +1171,19 @@ const clickTime = async() => {
   if(timelineref.value){
     timelineWidth.value = timelineref.value.offsetWidth//获取时间轴的宽度
     updateHandlePosition()//更新滑块的位置
+    if (timelineResizeObserver) {
+      timelineResizeObserver.disconnect(); // 断开之前的观察者
+
+    }
+    timelineResizeObserver = new ResizeObserver((entries) => {
+      for(let entry of entries) {
+        const width = entry.contentRect.width;
+        timelineWidth.value = width; // 更新时间轴宽度
+        updateHandlePosition(); // 更新滑块位置
+      }
+
+    });
+    timelineResizeObserver.observe(timelineref.value); // 观察时间轴的宽度变化
   }
   console.log('时间表')
 }
@@ -1208,10 +1226,31 @@ onMounted(() => {
   view.ui.add(togglemap, "top-right");
   // view.ui.add(gallery, "top-right");
   view.ui.remove(["attribution", "zoom"]);
+  view.on('click', (event) => {
+    console.log(hours)
+    if (!event.mapPoint) {
+      return;
+    }
+    view.hitTest(event).then((e) => {
+      // console.log(e.results[0].graphic.attributes.value)//打印出点击的图形的属性
+      if (e.results.length>0&&e.results[0].graphic.attributes.value) {
+
+
+        mapviewDataStore.stations = e.results[0].graphic.attributes.value//将点击的图形的属性赋值给mapviewDataStore.stations
+        mapviewDataStore.A_station(mapviewDataStore.stations)//获取该站点的aqi数据
+        mapviewDataStore.datachuli()//处理数据 为了渲染echarts图表
+        initLineEcharts()//初始化折线图
+        echartsshow.value = true//显示折线图
+      }
+
+    })
+  //监听地图点击事件
+   })//监听地图点击事件  并将单击的点数据渲染到echarts  aqi图表上
   view.when(async() => {
 
 
     initLineEcharts()//初始化折线图
+
 
     await mapviewDataStore.airQuality()
     mapviewDataStore.Pointdata//获取北京市各区的综合数据
@@ -1279,7 +1318,17 @@ onMounted(() => {
 
 
 
+
+
   })
+})
+
+onUnmounted(() => {
+  clearInterval(playInterval.value); // 清除播放定时器
+  if (timelineResizeObserver) {
+    timelineResizeObserver.disconnect(); // 断开之前的观察者
+    timelineResizeObserver = null;
+  }
 })
 
 </script>
@@ -1318,9 +1367,11 @@ onMounted(() => {
 
   left: 9px;
   right: 10px;
+  /* display: flex; */
   /* background-color: rgba(0, 0, 0, 0.5); */
   width: 99%;
   height: 200px;
+
   border-radius: 9px;
   /* bottom: 10px; */
 }
@@ -1385,8 +1436,8 @@ onMounted(() => {
   margin-bottom: 0px; /* 与播放控件的间距 */
 }
 .time-labels span {
-  flex-shrink: 0; /* 防止标签被压缩 */
-   transform: translateX(-50%); /* 使标签文字中心对齐其逻辑位置 */
+  flex-shrink: 0;
+   transform: translateX(-50%);
 }
 .time-labels span:first-child {
   transform: translateX(0%);

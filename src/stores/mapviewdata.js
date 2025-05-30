@@ -1,7 +1,9 @@
 import { defineStore } from "pinia";
 import { ref } from 'vue'
 import { birdData, A_stationData, airQualityData } from '@/api/data.js'
+import { time } from "echarts";
 export const useMapViewDataStore = defineStore('mapviewdata', () => {
+  let timearry = ref([])
   let Pointdata = ref([])
   let stations = ref(2)
   let stationsdata = ref([])
@@ -41,13 +43,39 @@ const airQuality = async()=>{
   so2data.value = stationsdata.value.sort((a, b) => { return a.timestr < b.timestr? -1 : 1  }).map((item) => { return item.o3.split(',')[1].toString() })
   pm10data.value = stationsdata.value.sort((a, b) => { return a.timestr < b.timestr? -1 : 1  }).map((item) => { return item.o3.split(',')[1].toString() })
     no2data.value = stationsdata.value.sort((a, b) => { return a.timestr < b.timestr ? -1 : 1 }).map((item) => { return item.o3.split(',')[1].toString() })
-    console.log(Object.values(timestrdata.value))
+    console.log(timestrdata.value)
+
+
+  }
+  const timeArryData = () => {
+    if (timearry.value.length > 0) {
+      timearry.value = []
+      if (timestrdata.value.length) {
+      for (let key of Object.values(timestrdata.value)) {
+        timearry.value.push(key)
+      }
+      console.log(timearry.value)
+    }
+
+
+    } else {
+      if (timestrdata.value.length) {
+      for (let key of Object.values(timestrdata.value)) {
+        timearry.value.push(key)
+      }
+      console.log(timearry.value)
+    }
+
+    }
+
+
 
   }
   const ceshi = () => {
     console.log('useStore函数使用')
   }
   return {
+    timearry,
     Pointdata,
     timestrdata,
     stations,
@@ -63,7 +91,8 @@ const airQuality = async()=>{
     A_station,
     airQuality,
     datachuli,
-    ceshi
+    ceshi,
+    timeArryData
 
   }
 

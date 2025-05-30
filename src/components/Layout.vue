@@ -512,7 +512,8 @@ html, body {
   .content-wrapper {
     height: 100%;
     overflow-y: auto;
-    padding-right: 10px; /* 防止内容被滚动条遮挡 */
+    // padding-right: 10px;
+    overflow: hidden; /* 隐藏溢出内容 */
     // margin-right: -10px;
     // -ms-overflow-style: none;
     // scrollbar-width: none;
