@@ -1,6 +1,7 @@
 <template>
 
     <div id="chart"></div>
+    <div class="list" ref="chartlist"></div>
 
 
 </template>
@@ -9,7 +10,9 @@
 import * as echarts from 'echarts'
 import { onMounted, watch,ref} from 'vue'
 import { useMapViewDataStore } from '@/stores/mapviewdata'
+// import { name } from '@vue/eslint-config-prettier/skip-formatting'
 const mapviewdataStore = useMapViewDataStore()
+const chartlist = ref(null)
 
 // import { birdData, A_stationData, airQualityData } from '@/api/data.js'
 // let stations = ref(2)
@@ -180,16 +183,80 @@ const initcharts = () => {
   chartinit.setOption(option)
 
 }
+const initchartslist = () => {
+  const chartslistinit = echarts.init(chartlist.value)
+  const option = {
+    grid: {
+      top: '10%',
+      left: '10%',
+      right: '10%',
+      bottom: '10%',
+      containLabel: true
+    },
+    title: {
+      text: 'AQI排行榜',
+      left: 'center',
+      top: '0',
+      textStyle: {
+        color: 'black',//设置图例文字颜色
+      }
+    },
+    tooltip: {
+      show: true,
+      trigger: 'item',//触发类型
+    },
+    yAxis: {
+      type: 'category',
+      data: mapviewdataStore.stationAllName,
+      axisLine: {
+                    show: false // 显示Y轴轴线
+                },
+                axisTick: {
+                    show: false // 显示Y轴刻度
+                }
+
+    },
+    xAxis: {
+      type: 'value',
+      show: false,
+    },
+    series: [
+      {
+        name: 'AQI',
+        type: 'bar',
+        data: mapviewdataStore.stationAllAqi,
+        itemStyle: {
+          borderRadius: [0, 70, 70, 0], // 设置柱子圆角
+        },
+        label: {
+          show: true,
+          position: 'right', // 标签位置在柱子右侧
+          formatter: '{c}', // 标签内容显示数值
+        },
+
+      }
+    ]
+
+
+  }
+
+  chartslistinit.setOption(option)
+  chartslistinit.resize() // 调整图表大小以适应容器
+
+}
 onMounted(async() => {
   mapviewdataStore.ceshi()
   console.log(mapviewdataStore.stationsdata)
   await mapviewdataStore.bird()//鸟类数据
   await mapviewdataStore.airQuality()//空气质量数据
+  console.log(mapviewdataStore.stationAllAqi)
+  console.log(mapviewdataStore.stationAllName)
   // console.log(stationsdata.value[0])s
   await mapviewdataStore.A_station(mapviewdataStore.stations)//一个站点的空气质量数据
   mapviewdataStore.datachuli()
   console.log(mapviewdataStore.timestrdata)
   initcharts()
+  initchartslist()
   watch(mapviewdataStore.timestrdata, (newData, oldData) => {
     console.log('图表时间更新，数据更新')
     initcharts()
@@ -205,8 +272,18 @@ onMounted(async() => {
 <style scoped>
 #chart {
   width: 100%;
-  height: 100vh;
+  height: 50vh;
   position: relative;
   overflow: hidden;
+}
+.list{
+  width: 50%;
+  height: 50vh;
+  position: relative;
+  overflow: hidden;
+  background-color: #f0f0f0;
+  padding: 10px;
+  box-sizing: border-box;
+
 }
 </style>

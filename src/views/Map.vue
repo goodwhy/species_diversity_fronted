@@ -816,7 +816,8 @@ html, body, #viewDiv {
     <el-button type="primary" @click="clickLine">折线图</el-button>
     <el-button type="primary" @click="clickTime">时间表</el-button>
   </div>
-  <div class="echarts-line" v-if="echartsshow">
+  <div class="echarts-line" ref="echartslineRef" v-if="echartsshow">
+
   </div>
   <div class="echarts-time" v-else>
     <div class="timeline-container">
@@ -845,6 +846,10 @@ html, body, #viewDiv {
 
 
   </div>
+</div>
+<div class="echarts-side">
+  <div class="echarts-side-list" ref="echartsListRef"></div>
+  <div class="echarts-side-radar" ref="echartsRadarRef"></div>
 </div>
 </template>
 <script setup>
@@ -980,6 +985,12 @@ watch(currentTimeIndex, (newIndex) => {
 let echartsshow = ref(true)//控制图表的显示和隐藏
 
 let Pointdata = ref(null)//获取北京市各区的综合数据 目的是将这些点渲染到地图上
+const echartslineRef = ref()
+const echartslineList = ref()//折线图的列表
+let echartslineInstance = null
+let lineresizeObserver = null
+
+const echartsListRef = ref()//获取排行榜的图表dom实例
 const aqicolor = (aqi) => {
   if (aqi <= 50) return 'green';
   if (aqi <= 100) return 'yellow';
@@ -1000,24 +1011,34 @@ const aqicolorvalue = (aqi) => {
 
 }
 const initLineEcharts = async () => {
+  console.log(mapviewDataStore.stations)
   await mapviewDataStore.A_station(mapviewDataStore.stations)
   mapviewDataStore.datachuli()//处理数据 为了渲染echarts图表
   mapviewDataStore.timeArryData() //获取时间轴数据
   hours.value = mapviewDataStore.timearry//时间轴的小时标签
-  const echartsinit = echarts.init(document.querySelector('.echarts-line'))
+  if (lineresizeObserver) {
+    lineresizeObserver.disconnect()//销毁resizeObserver实例
+    lineresizeObserver=null
+  }
+  if (echartslineInstance) {
+    echartslineInstance.dispose()//销毁echarts实例
+    echartslineInstance=null
+
+  }
+  echartslineInstance = echarts.init(echartslineRef.value)
   const option = {
     grid: {
       left: '0%',
       right: '5%',
       top: '25%',
-      bottom: '5%',
+      bottom: '0s%',
       containLabel: true
     },
     title: {
-      text: '北京市城市空气质量检测折线图 -- 24小时aqi数据的变化',
+      text: `${mapviewDataStore.station_name} -- 24小时aqi数据`,
       left: 20,
       textStyle: {
-        color: 'white',//设置标题文字颜色
+        color: 'black',//设置标题文字颜色
         fontSize: 16,
         // fontWeight: 'bold'
       }
@@ -1039,11 +1060,11 @@ const initLineEcharts = async () => {
       data: mapviewDataStore.timestrdata,
       boundaryGap: false,//紧挨边缘
       axisLabel: {
-        color: 'white',//设置x轴文字颜色
+        color: 'black',//设置x轴文字颜色
       },
       axisLine: {
         lineStyle: {
-          color: 'white'//设置x轴线颜色
+          color: 'black'//设置x轴线颜色
         }
       },
 
@@ -1057,13 +1078,16 @@ const initLineEcharts = async () => {
       {
         name: 'aqi',
         type: 'line',
-        data: mapviewDataStore.aqidata,
-        markPoint: {
-          data: [
-            { type: 'max', name: '最大值' },
-            { type: 'min', name: '最小值' }
-          ]
+        label: {
+          show: true,
+          position: 'top',
+          color: 'black',
+          formatter: (params) => {
+            return `${params.value} `;//显示aqi值和对应的颜色
+          }
         },
+        data: mapviewDataStore.aqidata,
+
         // markLine: {
         //   data: [
         //     { type: 'average', name: '平均值' }
@@ -1072,7 +1096,7 @@ const initLineEcharts = async () => {
 
         smooth: true,//设置折线图平滑
         lineStyle: {
-          color: 'yellow',//设置折线的颜色
+          color: 'black',//设置折线的颜色
           type: 'solid',//设置折线的类型 dashed(虚线), dotted(点线), solid
         },//设置折线的样式
         // areaStyle: {
@@ -1144,7 +1168,154 @@ const initLineEcharts = async () => {
       // }
     ]
   }
-  echartsinit.setOption(option)//设置折线图的option
+  echartslineInstance.setOption(option)//设置折线图的option
+  lineresizeObserver = new ResizeObserver(entries => {
+    if (echartslineInstance) {
+      echartslineInstance.resize()//让echarts图表重新适配
+
+    }
+  })
+  lineresizeObserver.observe(echartslineRef.value)//监视div元素变化
+
+
+
+}
+const initListEcharts = async () => {
+  await mapviewDataStore.airQuality()//获取空气质量数据
+  const initecharts = echarts.init(echartsListRef.value)//初始化排行榜图表
+
+  let itemsPerPage = 6;
+  let animationInterval = 2000;
+  let currentIndex = 0;
+  let timeId = null;
+
+  const option = {
+    grid: {
+      left: '2%',
+      right: '5%',
+      top: '10%',
+      bottom: '0%',
+      containLabel: true
+    },
+    title: {
+      text: '空气质量排行榜',
+      top: '5px',
+      left: 'center',
+      textStyle: {
+        color: 'black',//设置标题文字颜色
+        fontSize: 16,
+        // fontWeight: 'bold'
+      }
+    },
+    tooltip: {
+      trigger: 'item',
+      formatter: '{b}: {c} '
+    },
+    xAxis: {
+      type: 'value',
+      show: false,//隐藏x轴
+    },
+    yAxis: {
+      type: 'category',
+      nameTextStyle: {
+        color: 'white',//设置y轴名称文字颜色
+      },
+
+      data: mapviewDataStore.stationAllName,//将各区的站点名称作为y轴数据
+      axisLabel: {
+        color: 'black',//设置y轴文字颜色
+      },
+      axisLine: {
+        show: false,//显示y轴线
+
+
+      },
+      axisTick: {
+        show: false//隐藏y轴刻度线
+      }
+    },
+    dataZoom: [
+      {
+        type: 'inside',
+        yAxisIndex: 0,
+        startValue: currentIndex,
+        endValue: currentIndex + itemsPerPage - 1,
+        zoomLock: true, // 锁定缩放
+      }
+    ],
+
+    series: [
+      {
+        name: 'AQI',
+        type: 'bar',
+        // radius: '55%',
+        // center: ['50%', '60%'],
+        data: mapviewDataStore.stationAllAqi,
+        emphasis: {
+          itemStyle: {
+            shadowBlur: 10,
+            shadowOffsetX: 0,
+            shadowColor: 'rgba(0, 0, 0, 0.5)'
+          }
+        },
+        itemStyle: {
+          borderRadius: [0, 70, 70, 0] // 分别设置 [左上角, 右上角, 右下角, 左下角] 的圆角
+        },
+        label: { // 柱条文本标签
+          show: true,
+          position: 'right', // 标签的位置，对于水平柱状图，'right' 表示在柱子右侧
+          // formatter: '{c}'
+        },
+      }
+    ]
+  }
+  initecharts.setOption(option)//设置排行榜图表的option
+  const startCarousel = () => {
+    if(timeId) {
+      clearInterval(timeId); // 清除之前的定时器
+    }
+    if (mapviewDataStore.stationAllName.length > itemsPerPage) {
+      timeId = setInterval(() => {
+        currentIndex += itemsPerPage;
+        if (currentIndex > mapviewDataStore.stationAllName.length - itemsPerPage) {
+
+          currentIndex = 0; // 如果超过了数据长度，则重置为0
+        }
+        let newStartValue = currentIndex;
+        let newEndValue = currentIndex + itemsPerPage - 1;
+        if(newEndValue >= mapviewDataStore.stationAllName.length) {
+          newEndValue = mapviewDataStore.stationAllName.length - 1; // 确保结束值不超过数据长度
+        }
+        initecharts.dispatchAction({
+          type: 'dataZoom',
+          yAxisIndex: 0,
+          startValue: newStartValue,
+          endValue: newEndValue
+        })
+      }, animationInterval); // 设置新的定时器
+    }
+  }
+  const stopCarousel = () => {
+    if(timeId) {
+      clearInterval(timeId); // 清除定时器
+      timeId = null; // 重置定时器变量
+    }
+
+  }
+  startCarousel()//开始轮播
+  initecharts.on('mouseover', () => {
+    stopCarousel(); // 鼠标悬停时停止轮播
+  });
+  initecharts.on('mouseout', () => {
+    startCarousel(); // 鼠标移出时重新开始轮播
+  });
+
+  window.addEventListener('resize', () => {
+    if (initecharts) {
+      initecharts.resize()//让排行榜图表重新适配
+    }
+  })//监听窗口大小变化
+  initecharts.resize()//让排行榜图表重新适配
 
 }
 const pupoptem = new Popup({
@@ -1223,22 +1394,23 @@ onMounted(() => {
       }
     }
   });//底图画廊微件
-  view.ui.add(togglemap, "top-right");
+  view.ui.add(togglemap, "top-left");
   // view.ui.add(gallery, "top-right");
   view.ui.remove(["attribution", "zoom"]);
   view.on('click', (event) => {
-    console.log(hours)
+    console.log(hours.value)
     if (!event.mapPoint) {
       return;
     }
     view.hitTest(event).then((e) => {
       // console.log(e.results[0].graphic.attributes.value)//打印出点击的图形的属性
-      if (e.results.length>0&&e.results[0].graphic.attributes.value) {
+      if (e.results.length > 0 && e.results[0].graphic.attributes.value) {
+        console.log(e.results[0].graphic.attributes)//打印出点击的图形的属性
 
 
         mapviewDataStore.stations = e.results[0].graphic.attributes.value//将点击的图形的属性赋值给mapviewDataStore.stations
-        mapviewDataStore.A_station(mapviewDataStore.stations)//获取该站点的aqi数据
-        mapviewDataStore.datachuli()//处理数据 为了渲染echarts图表
+        mapviewDataStore.stationsnamelist(e.results[0].graphic.attributes.name)
+
         initLineEcharts()//初始化折线图
         echartsshow.value = true//显示折线图
       }
@@ -1250,10 +1422,12 @@ onMounted(() => {
 
 
     initLineEcharts()//初始化折线图
+    initListEcharts()//初始化排行榜图表
 
 
     await mapviewDataStore.airQuality()
     mapviewDataStore.Pointdata//获取北京市各区的综合数据
+    console.log(mapviewDataStore.Pointdata)
     for (let i = 0; i < mapviewDataStore.Pointdata.length; i++) {
       const point = mapviewDataStore.Pointdata[i];
       let popuphtml =
@@ -1344,12 +1518,12 @@ onUnmounted(() => {
 }
 .echarts-overlay {
   position: absolute;
-  bottom: 10px;
+  bottom: 5px;
   left: 5px;
   /* right: 10px; */
   border-radius: 8px;
-  width: 99%;
-  height: 250px;
+  width: 71%;
+  height: 45%;
   background-color:rgba(0,0,0,0.5);
   pointer-events: auto; /* 禁用鼠标事件 */
   z-index: 10;
@@ -1365,16 +1539,17 @@ onUnmounted(() => {
   position: relative;
   top: 20px;
 
-  left: 9px;
-  right: 10px;
-  /* display: flex; */
+  left: 0px;
+  right: 0px;
+  display: flex;
   /* background-color: rgba(0, 0, 0, 0.5); */
-  width: 99%;
-  height: 200px;
+  width: 100%;
+  height: 75%;
 
   border-radius: 9px;
   /* bottom: 10px; */
 }
+
 .echarts-time{
   position: relative;
   top: 20px; /* 与折线图区域对齐 */
@@ -1465,6 +1640,49 @@ onUnmounted(() => {
 
 }
 
+
+
+.echarts-side{
+  position: absolute;
+  top: 5px;
+
+  right: 5px;
+
+  width: 28.12%;
+  height: calc(100% - 10px);
+  background-color: rgba(0,0,0,0.5);
+  border-radius: 8px;
+  z-index: 1; /* 确保在地图下方 */
+
+}
+.echarts-side-list{
+  position: relative;
+  top: 0;
+  left: 0;
+  width: 100%;
+  /* background-color: rgba(0,0,0,0.5); */
+  height: 54%;
+  border-radius: 9px;
+
+
+
+
+
+}
+.echarts-side-radar{
+  position: relative;
+  top: 0px;
+  left: 0;
+  background-color: rgba(0,0,0,0.5);
+  width: 100%;
+  height: 46%;
+  border-radius: 9px;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+}
 
 /* .time-lables{
   position: relative;
