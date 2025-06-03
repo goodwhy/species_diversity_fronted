@@ -851,10 +851,35 @@ html, body, #viewDiv {
   <div class="echarts-side-list" ref="echartsListRef"></div>
   <div class="echarts-side-radar" ref="echartsRadarRef"></div>
 </div>
+<div class="layer-list">
+    <div class="layer-list-icon" @click="handleLayerListPanelVisible">
+      <img :src="LayerListIcon"/>
+    </div>
+    <div class="layer-list-view" v-show="layerListPanelVisible">
+      <div class="layer-list-herder">
+        <span>图层列表</span>
+      </div>
+      <div class="layer-list-content">
+        <div class="layer-list-item" v-for="(item,index) in layerList" :key="index">
+          <span>{{item.name}}</span>
+
+          <el-icon class="layer-toggle-icon" @click="handleLayerItemClick(item)">
+              <View v-if="alreadyAddLayerIds.includes(item.id)" />
+              <Hide v-else />
+          </el-icon>
+        </div>
+
+      </div>
+    </div>
+  </div>
 </template>
 <script setup>
 import * as echarts from "echarts";
-import { VideoPlay,VideoPause, RefreshRight } from "@element-plus/icons-vue";
+import LayerListIcon from "@/assets/layer1.jpg";
+import MapImageLayer from '@geoscene/core/layers/MapImageLayer'
+import ImageryLayer from '@geoscene/core/layers/ImageryLayer'
+import FeatureLayer from '@geoscene/core/layers/FeatureLayer'
+import { VideoPlay,VideoPause, RefreshRight,View,Hide } from "@element-plus/icons-vue";
 import Map from "@geoscene/core/Map";
 import MapView from "@geoscene/core/views/MapView";
 import BasemapToggle from "@geoscene/core/widgets/BasemapToggle";//添加切换底图微件
@@ -867,6 +892,81 @@ import { onMounted, ref , computed,watch,nextTick ,onUnmounted} from "vue";
 
 
 const mapviewDataStore = useMapViewDataStore();
+
+
+//图层管理功能
+let mapViewIstance=ref(null)
+let layerListPanelVisible = ref(false)//图层列表面板的显示和隐藏
+const layerList = [{
+  id: 'layer-1',
+  name: '图层一',
+  url:'https://sampleserver6.arcgisonline.com/arcgis/rest/services/USA_Topo_Map/MapServer',
+  type:'mapImageLayer',
+}, {
+  id: 'layer-2',
+  name: '图层二',
+  url: 'https://sampleserver6.arcgisonline.com/arcgis/rest/services/USA/MapServer/0',
+  type:'featureLayer'
+  }, {
+  id: 'layer-3',
+  name: '图层三',
+  url: 'https://landsat2.arcgis.com/arcgis/rest/services/Landsat8_Views/ImageryServer',
+  type:'ImageryLayer'
+  }]
+let alreadyAddLayerIds = ref([])
+const handleLayerListPanelVisible = () => {
+  layerListPanelVisible.value = !layerListPanelVisible.value
+}
+const handleLayerItemClick = (item) => {
+  if(!mapViewIstance.value){
+    return
+  }
+  const view = mapViewIstance.value
+  let ArcGISLayer = null
+  switch (item.type) {
+    case 'mapImageLayer':
+      ArcGISLayer = MapImageLayer
+      break;
+    case 'featureLayer':
+      ArcGISLayer = FeatureLayer
+      break;
+    case 'ImageryLayer':
+      ArcGISLayer = ImageryLayer
+      break;
+    default:
+      break;
+  }
+  let maplayer = view.map.layers.items//获取地图上的所有图层
+  let layerIds = maplayer.map((item) => { item.id })//获取所有图层的id
+  //如果已经添加过图层删掉该图层，并更新layersIds和maplayer如果没有添加过该图层加上该图层
+  if (layerIds.includes(item.id)) {
+    const resultslayer = view.map.findLayerById(item.id)
+    if (resultslayer) {
+      view.map.remove(resultslayer)
+      maplayer = view.map.layers.items
+      layerIds = maplayer.map((item) => { item.id })
+      alreadyAddLayerIds.value = layerIds
+    }
+
+  } else {
+    if (ArcGISLayer) {
+      const Nlayer = new ArcGISLayer({
+        url: item.url,
+        id: item.id
+      })
+      view.map.add(Nlayer)
+      maplayer = view.map.layers.items
+      layerIds = maplayer.map((item) => { item.id })
+      alreadyAddLayerIds.value = layerIds
+    }
+
+  }
+
+}//图层列表点击事件
+
+
+
+
 
 let hours = ref([])//时间轴的小时标签
 const subTimeLineLeft = ref(0)
@@ -987,6 +1087,8 @@ let echartsshow = ref(true)//控制图表的显示和隐藏
 let Pointdata = ref(null)//获取北京市各区的综合数据 目的是将这些点渲染到地图上
 const echartslineRef = ref()
 const echartslineList = ref()//折线图的列表
+const echartsRadarRef = ref()//value的ref
+
 let echartslineInstance = null
 let lineresizeObserver = null
 
@@ -1184,6 +1286,7 @@ const initListEcharts = async () => {
   await mapviewDataStore.airQuality()//获取空气质量数据
   const initecharts = echarts.init(echartsListRef.value)//初始化排行榜图表
 
+
   let itemsPerPage = 6;
   let animationInterval = 2000;
   let currentIndex = 0;
@@ -1191,15 +1294,15 @@ const initListEcharts = async () => {
 
   const option = {
     grid: {
-      left: '2%',
-      right: '5%',
+      left: '1%',
+      right: '10%',
       top: '10%',
       bottom: '0%',
       containLabel: true
     },
     title: {
       text: '空气质量排行榜',
-      top: '5px',
+      top: '6px',
       left: 'center',
       textStyle: {
         color: 'black',//设置标题文字颜色
@@ -1209,11 +1312,12 @@ const initListEcharts = async () => {
     },
     tooltip: {
       trigger: 'item',
-      formatter: '{b}: {c} '
+      formatter: `{b}: {c} (${aqicolorvalue(mapviewDataStore.stationAllAqi[currentIndex])} AQI)`,
     },
     xAxis: {
       type: 'value',
       show: false,//隐藏x轴
+
     },
     yAxis: {
       type: 'category',
@@ -1232,7 +1336,8 @@ const initListEcharts = async () => {
       },
       axisTick: {
         show: false//隐藏y轴刻度线
-      }
+      },
+
     },
     dataZoom: [
       {
@@ -1264,7 +1369,7 @@ const initListEcharts = async () => {
         label: { // 柱条文本标签
           show: true,
           position: 'right', // 标签的位置，对于水平柱状图，'right' 表示在柱子右侧
-          // formatter: '{c}'
+          formatter: `{c}`
         },
       }
     ]
@@ -1316,6 +1421,74 @@ const initListEcharts = async () => {
     }
   })//监听窗口大小变化
   initecharts.resize()//让排行榜图表重新适配
+
+}
+const initRadarEcharts = () => {
+  const radarInstance = echarts.init(echartsRadarRef.value)//初始化value图表
+  const option = {
+    grid: {
+        left: '-1%',
+        right: '5%',
+        top: '25%',
+        bottom: '0%',
+        containLabel: true
+    },
+    title: {
+        text: '图例-Value',
+        left:'20px', // Adjust positioning as needed
+        top: 20,  // Adjust positioning as needed
+        textStyle: {
+            fontSize: 18, // Approximate font size from image
+            fontWeight: 'bold',
+            color: 'black' // Dark grey text color
+        }
+    },
+            // VisualMap component for the legend-like display
+    visualMap: {
+        type: 'piecewise',    // Piecewise mapping
+        orient: 'vertical',   // Vertical layout
+        inverse: true,       // Order of pieces as defined
+        left: 20,             // Align with title
+        top: 55,              // Position below the title (20 for title.top + ~35 for title height + ~20 gap)
+        itemWidth: 28,        // Width of the color swatch
+        itemHeight: 18,       // Height of the color swatch
+        itemGap: 14,          // Vertical gap between legend items
+        textGap: 10,          // Horizontal gap between swatch and text
+      pieces: [
+        { min: 0, max: 50, label: '0 - 50 (优)', color: '#B3E8B4' },
+        { min: 51, max: 100, label: '51- 100 (良)', color: '#FEFDC3' },
+        { min: 101, max: 150, label: '101 - 150 (轻度污染)', color: '#FFCA96' },
+        { min: 151, max: 200, label: '151 - 200 (中度污染)', color: '#FA9999' },
+        { min: 201, max: 300, label: '201- 300 (重度污染)', color: '#CEA6C4' },
+        { min: 301, max: 500, label: '301 - 500 (严重污染)', color: '#A3818F' },
+
+
+
+
+
+
+
+        ],
+        selectedMode:false,
+        textStyle: {
+            fontSize: 14,     // Approximate font size for legend item text
+            color: 'black'  // Dark grey text color
+        },
+        show: true // Ensure visualMap is visible
+    },
+
+    series: [],
+            // Set a background color for the chart container (optional)
+
+
+  }
+  radarInstance.setOption(option)//设置value图表的option
+  window.addEventListener('resize', () => {
+    if (radarInstance) {
+      radarInstance.resize()//让value图表重新适配
+    }
+  })//监听窗口大小变化
+  radarInstance.resize()//让value图表重新适配
 
 }
 const pupoptem = new Popup({
@@ -1380,22 +1553,7 @@ onMounted(() => {
 
   });//创建一个图形图层
   map.add(graphicsLayer);//将图形图层添加到地图上
-
-  const togglemap = new BasemapToggle({
-    view: view,
-    nextBasemap: "tianditu-image"
-  });//切换底图微件
-  const gallery = new BasemapGallery({
-    view: view,
-    source: {
-      query: {
-        title: "Tianditu",
-
-      }
-    }
-  });//底图画廊微件
-  view.ui.add(togglemap, "top-left");
-  // view.ui.add(gallery, "top-right");
+  mapViewIstance.value = view//将地图视图实例赋值给mapViewIstance  图层管理的时候需要使用
   view.ui.remove(["attribution", "zoom"]);
   view.on('click', (event) => {
     console.log(hours.value)
@@ -1423,6 +1581,7 @@ onMounted(() => {
 
     initLineEcharts()//初始化折线图
     initListEcharts()//初始化排行榜图表
+    initRadarEcharts()//初始化value图表
 
 
     await mapviewDataStore.airQuality()
@@ -1648,9 +1807,9 @@ onUnmounted(() => {
 
   right: 5px;
 
-  width: 28.12%;
+  width: 27.97%;
   height: calc(100% - 10px);
-  background-color: rgba(0,0,0,0.5);
+
   border-radius: 8px;
   z-index: 1; /* 确保在地图下方 */
 
@@ -1660,9 +1819,11 @@ onUnmounted(() => {
   top: 0;
   left: 0;
   width: 100%;
-  /* background-color: rgba(0,0,0,0.5); */
+  background-color: rgba(0,0,0,0.5);
+
   height: 54%;
   border-radius: 9px;
+  border:1px solid #ccc;
 
 
 
@@ -1674,9 +1835,11 @@ onUnmounted(() => {
   top: 0px;
   left: 0;
   background-color: rgba(0,0,0,0.5);
+  /* background-color: rgba(0,0,0,0.5); */
   width: 100%;
   height: 46%;
   border-radius: 9px;
+  border:1px solid #ccc;
 
   display: flex;
   justify-content: center;
@@ -1694,6 +1857,85 @@ onUnmounted(() => {
   /*color: #fff;  时间标签颜色
 
 } */
+
+
+/* 图层管理的样式 */
+.layer-list-icon{
+  position:absolute;
+  top:10px;
+  left:10px;
+  width: 36px;
+  height:36px;
+  padding: 2px;
+  background-color: #fff;
+  border:2px solid #fff;
+  box-sizing: border-box;
+  cursor: pointer;
+
+}
+.layer-list-icon:hover{
+  border-color: #409eff;
+}
+.layer-list-icon img{
+  width:100%;
+  height:100%;
+}
+.layer-list-view{
+  position:absolute;
+  top:10px;
+  left:60px;
+  width:260px;
+  height:400px;
+  padding: 0 16px;
+  background-color:rgba(255, 255, 255, 0.9);
+  border:2px solid #fff;
+  box-sizing: border-box;
+}
+.layer-list-herder{
+  height: 48px;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid #eee;
+  box-sizing: border-box;
+}
+.layer-list-herder span{
+  font-size: 16px;
+  font-weight: 600;
+}
+.layer-list-content{
+  height:calc(100%-48px);
+  padding-top:8px;
+}
+.layer-list-item{
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-right: 8px;
+  box-sizing: border-box;
+}
+.layer-toggle-icon { /* Style for the new Element Plus icon */
+  font-size: 18px; /* Default icon size */
+  cursor: pointer;
+  color: #606266; /* Default icon color */
+  transition: font-size 0.2s, color 0.2s;
+}
+/* .layer-list>img{
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+} */
+.layer-list-item:hover{
+  background-color: #f5f5f5;
+  padding-left: 8px;
+  font-weight:600;
+}
+.layer-list-item:hover .layer-toggle-icon{
+  font-size: 22px;
+  color: #409eff;
+}
+
+/* 消除geoscene api的默认样式 */
 .geoscene-view{
     /* --esri-view-outline-color: var(--calcite-color-brand); */
     --geoscene-view-outline: 0px solid var(--geoscene-view-outline-color);

@@ -33,9 +33,24 @@ const airQuality = async()=>{
     const res=await airQualityData()
   console.log(res.data.data)//将数据从字符串切割为数组再取数组第一个数据再转为字符串
   Pointdata.value = res.data.data
-  stationAllName.value=Pointdata.value.map((item) => { return item.station_name })
-  stationAllAqi.value = Pointdata.value.map((item) => { return (item.aqi_data.aqi) == 0 ? '无数据' : (item.aqi_data.aqi).toString() })
+  let namedata = []
+  namedata = Pointdata.value.sort((a, b) => { return a.aqi_data.aqi > b.aqi_data.aqi ? -1 : 1 }).map((item) => { return item.station_name })//从高到低排序返回一个数组 })
+  let namedata6 = namedata.slice(0, 6).reverse()//将数组倒序排列
+  let namedata12 = namedata.slice(6, 12).reverse()
+  let namedata18 = namedata.slice(12, 18).reverse()
+  let namedata24 = namedata.slice(18, 24).reverse()
+  stationAllName.value = namedata6.concat(namedata12, namedata18, namedata24)//将数据分为6个一组进行处理
+  let aqidata = []
+  aqidata = Pointdata.value.map((item) => { return (item.aqi_data.aqi) }).sort((a, b) => { return a > b ? -1 : 1 })//从高到低排序返回一个数组
+  let aqidata6 = aqidata.slice(0, 6).reverse()//将数组倒序排列
+  let aqidata12 = aqidata.slice(6, 12).reverse()
+  let aqidata18 = aqidata.slice(12, 18).reverse()
+  let aqidata24 = aqidata.slice(18, 24).reverse()
+  stationAllAqi.value = aqidata6.concat(aqidata12, aqidata18, aqidata24)//将数据分为6个一组进行处理
+
+
   console.log(stationAllAqi.value)
+  console.log(stationAllName.value)
 
   }//请求空气质量数据并处理数据 将所有站点的名字数据和最新aqi数据进行处理用于显示排行榜
   const datachuli = () => {
