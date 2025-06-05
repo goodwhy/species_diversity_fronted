@@ -1721,12 +1721,12 @@ onUnmounted(() => {
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  justify-content: center; /* 垂直居中内容 */
+  justify-content: center;
   align-items: center;
   padding: 20px; /* 增加内边距 */
 }
 .timeline-container {
-  width: 90%; /* 时间轴容器宽度 */
+  width: 95%; /* 时间轴容器宽度 */
   margin: 0 auto; /* 水平居中 */
   /* background-color: #ccc; */
   display: flex;
@@ -1770,15 +1770,14 @@ onUnmounted(() => {
   margin-bottom: 0px; /* 与播放控件的间距 */
 }
 .time-labels span {
-  flex-shrink: 0;
-   transform: translateX(-50%);
+  flex-shrink: 0; /* 防止标签缩小 */
+  text-align: center; /* 标签居中 */
+  color: #fff; /* 标签颜色 */
+  font-size: 13px; /* 标签字体大小 */
+   padding: 0 1px;
+   transform: translateX(-1%);
 }
-.time-labels span:first-child {
-  transform: translateX(0%);
-}
-.time-labels span:nth-child(n+9):nth-child(-n+24) {
-  transform: translateX(-5%);
-}
+
 
 
 
