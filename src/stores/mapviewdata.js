@@ -19,6 +19,8 @@ export const useMapViewDataStore = defineStore('mapviewdata', () => {
   let station_name = ref('海淀万柳')
   const stationAllName = ref([])
   let stationAllAqi = ref([])
+  let webmap = ref(null)
+  let webmapextent = ref(null)
   const bird = async()=>{
     const res=await birdData()
     console.log(res.data)
@@ -106,6 +108,8 @@ const airQuality = async()=>{
     console.log('useStore函数使用')
   }
   return {
+    webmapextent,
+    webmap,
     timearry,
     Pointdata,
     timestrdata,

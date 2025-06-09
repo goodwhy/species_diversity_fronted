@@ -879,6 +879,7 @@ import LayerListIcon from "@/assets/layer1.jpg";
 import MapImageLayer from '@geoscene/core/layers/MapImageLayer'
 import ImageryLayer from '@geoscene/core/layers/ImageryLayer'
 import FeatureLayer from '@geoscene/core/layers/FeatureLayer'
+import Extent from '@geoscene/core/geometry/Extent'//地理范围
 import { VideoPlay,VideoPause, RefreshRight,View,Hide } from "@element-plus/icons-vue";
 import Map from "@geoscene/core/Map";
 import MapView from "@geoscene/core/views/MapView";
@@ -888,31 +889,20 @@ import Graphic from "@geoscene/core/Graphic";
 import GraphicsLayer from "@geoscene/core/layers/GraphicsLayer";
 import Popup from "@geoscene/core/widgets/Popup";
 import { useMapViewDataStore } from "@/stores/mapviewdata";
-import { onMounted, ref , computed,watch,nextTick ,onUnmounted} from "vue";
+import { onMounted, ref , markRaw,computed,watch,nextTick ,onUnmounted,shallowRef} from "vue";
+import { kelijin, finallyWorkStatus,paramWorkStatus ,intervalWork} from '@/api/aqidata.js'
 
 
 const mapviewDataStore = useMapViewDataStore();
 
 
 //图层管理功能
-let mapViewIstance=ref(null)
+let mapViewIstance=shallowRef(null)
 let layerListPanelVisible = ref(false)//图层列表面板的显示和隐藏
-const layerList = [{
-  id: 'layer-1',
-  name: '图层一',
-  url:'https://sampleserver6.arcgisonline.com/arcgis/rest/services/USA_Topo_Map/MapServer',
-  type:'mapImageLayer',
-}, {
-  id: 'layer-2',
-  name: '图层二',
-  url: 'https://sampleserver6.arcgisonline.com/arcgis/rest/services/USA/MapServer/0',
-  type:'featureLayer'
-  }, {
-  id: 'layer-3',
-  name: '图层三',
-  url: 'https://landsat2.arcgis.com/arcgis/rest/services/Landsat8_Views/ImageryServer',
-  type:'ImageryLayer'
-  }]
+const layerList = ref([])
+
+
+
 let alreadyAddLayerIds = ref([])
 const handleLayerListPanelVisible = () => {
   layerListPanelVisible.value = !layerListPanelVisible.value
@@ -922,45 +912,58 @@ const handleLayerItemClick = (item) => {
     return
   }
   const view = mapViewIstance.value
+  const existinglayer = view.map.findLayerById(item.id)
+  if(existinglayer){
+    view.map.remove(existinglayer)
+    alreadyAddLayerIds.value = view.map.layers.items.map((layer) => layer.id)//更新已经添加的图层ID
+    return
+  }
+  let newLayer = null
+  if(item.type === 'GraphicsLayer') {
+    if(item.url&&item.extent){
+
+      newLayer =markRaw(new GraphicsLayer({
+        source:{
+          type:"raster-data-source",
+          url: item.url,
+          extent: new Extent(item.extent)
+        },
+        id: item.id,
+        title: item.name
+      }))
+    }else {
+      console.error('无法创建ImageryLayer')
+      return
+    }
+  }else {
   let ArcGISLayer = null
-  switch (item.type) {
-    case 'mapImageLayer':
-      ArcGISLayer = MapImageLayer
-      break;
-    case 'featureLayer':
-      ArcGISLayer = FeatureLayer
-      break;
-    case 'ImageryLayer':
-      ArcGISLayer = ImageryLayer
-      break;
-    default:
-      break;
-  }
-  let maplayer = view.map.layers.items//获取地图上的所有图层
-  let layerIds = maplayer.map((item) => { item.id })//获取所有图层的id
-  //如果已经添加过图层删掉该图层，并更新layersIds和maplayer如果没有添加过该图层加上该图层
-  if (layerIds.includes(item.id)) {
-    const resultslayer = view.map.findLayerById(item.id)
-    if (resultslayer) {
-      view.map.remove(resultslayer)
-      maplayer = view.map.layers.items
-      layerIds = maplayer.map((item) => { item.id })
-      alreadyAddLayerIds.value = layerIds
-    }
+    switch (item.type) {
+      case 'mapImageLayer':
+        ArcGISLayer = MapImageLayer
+        break;
+      case 'featureLayer':
+        ArcGISLayer = FeatureLayer
+        break;
 
-  } else {
-    if (ArcGISLayer) {
-      const Nlayer = new ArcGISLayer({
+      default:
+        break;
+    }
+    if(ArcGISLayer) {
+      newLayer = markRaw(new ArcGISLayer({
         url: item.url,
-        id: item.id
-      })
-      view.map.add(Nlayer)
-      maplayer = view.map.layers.items
-      layerIds = maplayer.map((item) => { item.id })
-      alreadyAddLayerIds.value = layerIds
-    }
-
+        id: item.id,
+        title: item.name
+      }))
   }
+}
+//如果新图层存在，则添加到地图上
+if(newLayer) {
+    view.map.add(markRaw(newLayer))
+    // newLayer.when(()=>{view.goTo(newLayer.fullExtent)})//添加图层后跳转到图层范围
+    alreadyAddLayerIds.value = view.map.layers.items.map((layer) => layer.id)
+}
+
+
 
 }//图层列表点击事件
 
@@ -1532,7 +1535,8 @@ const clickTime = async() => {
   console.log('时间表')
 }
 
-onMounted(() => {
+onMounted(async() => {
+
   const map = new Map({
     basemap:"tianditu-vector",
   })
@@ -1577,6 +1581,40 @@ onMounted(() => {
   //监听地图点击事件
    })//监听地图点击事件  并将单击的点数据渲染到echarts  aqi图表上
   view.when(async() => {
+
+  const res=await kelijin('2025-05-04 10:00:00')
+  console.log(res.data)
+  const intervalWorkData = await intervalWork(res.data.jobId)
+  console.log(intervalWorkData)
+
+  const finallydata = await finallyWorkStatus(intervalWorkData.jobId)
+  mapviewDataStore.webmap = finallydata.data.value.mapImage.href//获取webmap的url
+  mapviewDataStore.webmapextent = finallydata.data.value.mapImage.extent//获取webmap的范围
+  console.log(finallydata)
+  console.log(mapviewDataStore.webmap)
+  layerList.value =  [{
+  id: 'layer-1',
+  name: '图层一',
+  url:'https://sampleserver6.arcgisonline.com/arcgis/rest/services/USA_Topo_Map/MapServer',
+  type:'mapImageLayer',
+}, {
+  id: 'layer-2',
+  name: '图层二',
+  url: 'https://sampleserver6.arcgisonline.com/arcgis/rest/services/USA/MapServer/0',
+  type:'featureLayer'
+  }, {
+  id: 'layer-3',
+  name: '图层三',
+  extent: {
+    xmin: mapviewDataStore.webmapextent.xmin,
+    ymin: mapviewDataStore.webmapextent.ymin,
+    xmax: mapviewDataStore.webmapextent.xmax,
+    ymax: mapviewDataStore.webmapextent.ymax,
+    spatialReference: { wkid: mapviewDataStore.webmapextent.spatialReference.wkid }
+  },
+  url: `${mapviewDataStore.webmap}`,
+  type:'GraphicsLayer',
+  }]
 
 
     initLineEcharts()//初始化折线图

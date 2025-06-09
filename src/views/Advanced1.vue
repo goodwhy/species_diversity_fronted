@@ -1,39 +1,47 @@
 <template>
   <div class="advanced1">
-    <div id="chart"></div>
+    我是高级功能1
 
   </div>
 </template>
 <script setup>
-import * as echarts from 'echarts'
-import { onMounted } from 'vue'
-import bjs from '@/assets/json/北京.json'
+
+import { onMounted,ref } from 'vue'
+
+import { kelijin, finallyWorkStatus,paramWorkStatus ,intervalWork} from '@/api/aqidata.js'
+import { useMapViewDataStore } from '@/stores/mapviewdata.js'
+const mapviewdataStore = useMapViewDataStore()
 
 
-onMounted(() => {
+onMounted(async() => {
+  const params= new URLSearchParams()// 创建一个 URLSearchParams 实例
+  params.append('age','90')
+  params.append('name','张三')
+  console.log(params.toString())
 
 
-  const chart = echarts.init(document.getElementById('chart'))
-  echarts.registerMap('beijing', bjs)
-  const option = {
-    geo: {
-      map: 'beijing',
-      roam: true,
-      zoom: 1.2,
-      label: {
-        show: true,
-        fontSize: 10
-      },
-      itemStyle: {
-        areaColor: '#f0f0f0',
-        borderColor: '#000',
-        borderWidth: 1
-      }
-    }
-  }
-  chart.setOption(option)
+
+  const res=await kelijin('2025-05-04 10:00:00')
+  console.log(res.data)
+  const intervalWorkData = await intervalWork(res.data.jobId)
+  console.log(intervalWorkData)
+
+  const finallydata = await finallyWorkStatus(intervalWorkData.jobId)
+  // console.log(finallydata)
+  // console.log(finallydata.data.value.mapImage.href)//获得web图层图片链接
+  mapviewdataStore.webmap= finallydata.data.value.mapImage.href
+  // console.log(mapviewdataStore.webmap)
+  mapviewdataStore.webmapextent = finallydata.data.value.mapImage.extent
+  // console.log(mapviewdataStore.webmapextent)
+
+
+
+
+
+
+
+
 })
-
 </script>
 <style scoped>
 * {
@@ -47,12 +55,7 @@ onMounted(() => {
   margin: 0;
   padding: 0;
 }
-#chart {
-  width: 100%;
-  height: 100%;
-  position: relative;
-  overflow: hidden;
-}
+
 </style>
 
 
